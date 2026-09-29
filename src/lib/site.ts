@@ -23,6 +23,10 @@ export const navItems = [
 export const ctaAnchor = "objednat";
 export const ctaLabel = "Odebírat";
 
+/** Přihlášený uživatel se z /prihlaseni přesměruje rovnou do účtu. */
+export const loginHref = "/prihlaseni";
+export const loginLabel = "Přihlásit";
+
 /**
  * Odkazy na kotvy vedou přes "/", aby fungovaly i z právních stránek.
  * Na hlavní stránce jde o posun v rámci dokumentu, ne o nové načtení.

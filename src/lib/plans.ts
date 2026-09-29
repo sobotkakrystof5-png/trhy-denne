@@ -30,12 +30,32 @@ const order: Tier[] = ["free", "start", "plus", "pro"];
 export const pickerTiers = ["start", "plus", "pro"] as const satisfies Tier[];
 export type PickerTier = (typeof pickerTiers)[number];
 
+export const tiers = order;
+
+export function isTier(value: unknown): value is Tier {
+  return typeof value === "string" && (order as string[]).includes(value);
+}
+
+/**
+ * Počet míst podle tarifu. V účtu a na serveru pochází z tabulky
+ * plan_limits. Výchozí hodnoty (seed) platí jen pro ukázku na prodejní
+ * stránce, která databázi nepotřebuje.
+ */
+export type Limits = Record<Tier, number>;
+
+export const defaultLimits: Limits = {
+  free: plans.free.maxWatchlist,
+  start: plans.start.maxWatchlist,
+  plus: plans.plus.maxWatchlist,
+  pro: plans.pro.maxWatchlist,
+};
+
 /** Nejbližší vyšší tarif s víc místy, nebo null, když už žádný není. */
-export function nextTierWithMoreRoom(tier: Tier): Tier | null {
-  const limit = plans[tier].maxWatchlist;
+export function nextTierWithMoreRoom(tier: Tier, limits: Limits = defaultLimits): Tier | null {
+  const limit = limits[tier];
   const higher = order
     .slice(order.indexOf(tier) + 1)
-    .find((candidate) => plans[candidate].maxWatchlist > limit);
+    .find((candidate) => limits[candidate] > limit);
   return higher ?? null;
 }
 
@@ -44,10 +64,10 @@ export type AddCheck =
   | { ok: false; limit: number; upgrade: Tier | null };
 
 /** Smí uživatel s `activeCount` položkami přidat další? */
-export function checkAdd(activeCount: number, tier: Tier): AddCheck {
-  const limit = plans[tier].maxWatchlist;
+export function checkAdd(activeCount: number, tier: Tier, limits: Limits = defaultLimits): AddCheck {
+  const limit = limits[tier];
   if (activeCount < limit) return { ok: true };
-  return { ok: false, limit, upgrade: nextTierWithMoreRoom(tier) };
+  return { ok: false, limit, upgrade: nextTierWithMoreRoom(tier, limits) };
 }
 
 /**

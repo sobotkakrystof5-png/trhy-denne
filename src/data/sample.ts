@@ -384,7 +384,8 @@ export const catalog: SymbolInfo[] = [
   ticker,
   name,
   kind: "stock" as const,
-  // Čtyři písmena jsou v kroužku 44 px nečitelná, stačí začátek tickeru.
+  // Stejné pravidlo jako monogramFor v lib/symbols.ts. Tento soubor nic
+  // neimportuje, aby ho mohl číst i seed (node scripts/seed.mts).
   monogram: ticker.length > 3 ? ticker.slice(0, 2) : ticker,
 }));
 

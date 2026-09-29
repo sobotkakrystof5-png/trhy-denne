@@ -3,7 +3,7 @@
 import { useEffect, useId, useState } from "react";
 import { BrandMark } from "./BrandMark";
 import { buttonClass } from "./ui/Button";
-import { anchorHref, ctaAnchor, ctaLabel, navItems, site } from "@/lib/site";
+import { anchorHref, ctaAnchor, ctaLabel, loginHref, loginLabel, navItems, site } from "@/lib/site";
 
 /**
  * Hlavička s kotvami a scrollspy. Přilepení řeší SiteHeader, aby se
@@ -48,15 +48,16 @@ export function Header() {
           </span>
           <span
             aria-hidden="true"
-            className="ml-1 hidden h-6 w-px bg-cream/30 xl:block"
+            className="ml-1 hidden h-6 w-px bg-cream/30 min-[1440px]:block"
           />
-          {/* Popisek až od 1280 px. Na 1024 px by se s navigací nevešel na řádek. */}
-          <span className="nav-caps hidden text-cream/55 xl:block">
+          {/* Popisek až od 1440 px. S odkazem Přihlásit se na 1280 px
+              navigace nevešla na řádek a "Jak to funguje" se zalomilo. */}
+          <span className="nav-caps hidden text-cream/55 min-[1440px]:block">
             {site.tagline}
           </span>
         </a>
 
-        <nav aria-label="Hlavní" className="hidden items-center gap-7 lg:flex">
+        <nav aria-label="Hlavní" className="hidden items-center gap-6 whitespace-nowrap lg:flex xl:gap-7">
           {navItems.map((item) => (
             <a
               key={item.id}
@@ -71,6 +72,12 @@ export function Header() {
               {item.label}
             </a>
           ))}
+          <a
+            href={loginHref}
+            className="nav-caps border-b-3 border-transparent pb-1 text-cream/85 no-underline transition-colors hover:text-cream"
+          >
+            {loginLabel}
+          </a>
           <a href={anchorHref(ctaAnchor)} className={buttonClass("cta", "no-underline")}>
             {ctaLabel}
           </a>
@@ -111,6 +118,14 @@ export function Header() {
                   </a>
                 </li>
               ))}
+              <li>
+                <a
+                  href={loginHref}
+                  className="nav-caps flex min-h-11 items-center border-b border-cream/15 text-cream no-underline"
+                >
+                  {loginLabel}
+                </a>
+              </li>
             </ul>
             <a
               href={anchorHref(ctaAnchor)}

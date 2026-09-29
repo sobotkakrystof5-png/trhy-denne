@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { accountsReady } from "@/lib/env";
+import { isSameOrigin, tooManyRequests } from "@/lib/http";
+import { clientIp, hit, limits } from "@/lib/rate-limit";
 import {
   CONSENT_TEXT_VERSION,
   EMAIL_MAX_LENGTH,
@@ -6,14 +9,14 @@ import {
   signupTiers,
   validateSignup,
 } from "@/lib/signup";
+import { subscribe } from "@/lib/subscriptions";
 
 /**
- * Odběr Free (a zájem o tarif). Zatím NIC NEUKLÁDÁ: databáze a Resend
- * přijdou ve fázi 3. Do té doby trasa podle zadání (5.3) odpovídá
- * pravdivě 503, nikdy falešným úspěchem.
+ * Odběr Free a zájem o tarif (zadání 5.3 a 5.4). Uloží souhlas s časem,
+ * IP a verzí znění a pošle potvrzovací e-mail (double opt-in).
  *
- * Omezení počtu požadavků přijde s databází. Dokud trasa nic neukládá
- * a nic neposílá, není co zneužít.
+ * Bez databáze nebo e-mailu odpovídá pravdivě 503, nikdy falešným
+ * úspěchem. Odpověď neprozradí, jestli adresa už odběr měla.
  */
 const bodySchema = z.object({
   email: z.string().trim().max(EMAIL_MAX_LENGTH).regex(EMAIL_PATTERN),
@@ -63,22 +66,59 @@ export async function POST(request: Request) {
       consent: candidate.consent === true,
     });
     if (isForm) {
-      return new Response(Object.values(fields).join("\n") || "Formulář není vyplněný správně.", {
-        status: 400,
-        headers: { "Content-Type": "text/plain; charset=utf-8" },
-      });
+      return plainText(Object.values(fields).join("\n") || "Formulář není vyplněný správně.", 400);
     }
     return Response.json({ error: "invalid", fields }, { status: 400 });
   }
 
-  const headers = { "Retry-After": "86400" };
-  if (isForm) {
-    return new Response(NOT_READY_TEXT, {
-      status: 503,
-      headers: { ...headers, "Content-Type": "text/plain; charset=utf-8" },
-    });
+  if (!accountsReady()) {
+    const headers = { "Retry-After": "86400" };
+    if (isForm) return plainText(NOT_READY_TEXT, 503, headers);
+    return Response.json({ error: "not_ready" }, { status: 503, headers });
   }
-  return Response.json({ error: "not_ready" }, { status: 503, headers });
+
+  if (trapped || !parsed.success) return success(isForm);
+
+  const ip = clientIp(request.headers);
+  const limit = await hit(limits.subscribeIp, ip ?? "unknown");
+  if (!limit.ok) {
+    if (isForm) {
+      return plainText("Z této adresy přišlo moc pokusů. Zkuste to za pár minut znovu.", 429, {
+        "Retry-After": String(limit.retryAfter),
+      });
+    }
+    return tooManyRequests(limit.retryAfter);
+  }
+
+  try {
+    await subscribe({
+      email: parsed.data.email,
+      tier: parsed.data.tier,
+      consentVersion: parsed.data.consentVersion,
+      ip,
+    });
+  } catch (error) {
+    console.error("[subscribe]", error);
+    if (isForm) return plainText("Server teď odpověděl chybou. Zkuste to za pár minut znovu.", 500);
+    return Response.json({ error: "server_error" }, { status: 500 });
+  }
+
+  return success(isForm);
+}
+
+/** Bez JavaScriptu se po úspěchu přesměruje na stránku s dalším krokem. */
+function success(isForm: boolean) {
+  if (isForm) {
+    return new Response(null, { status: 303, headers: { Location: "/dekujeme" } });
+  }
+  return Response.json({ ok: true });
+}
+
+function plainText(body: string, status: number, headers: Record<string, string> = {}) {
+  return new Response(body, {
+    status,
+    headers: { ...headers, "Content-Type": "text/plain; charset=utf-8" },
+  });
 }
 
 function parseJson(raw: string): Candidate | null {
@@ -100,18 +140,4 @@ function parseForm(raw: string): Candidate {
     consentVersion: form.get("consentVersion") ?? "",
     company: form.get("company") ?? "",
   };
-}
-
-/**
- * Formulář smí posílat jen tento web. Prohlížeč posílá Origin u každého
- * POST, takže chybějící hlavička znamená požadavek mimo prohlížeč.
- */
-function isSameOrigin(request: Request): boolean {
-  const origin = request.headers.get("origin");
-  if (!origin) return false;
-  const allowed = new Set([new URL(request.url).origin]);
-  if (process.env.NEXT_PUBLIC_SITE_URL) {
-    allowed.add(new URL(process.env.NEXT_PUBLIC_SITE_URL).origin);
-  }
-  return allowed.has(origin);
 }

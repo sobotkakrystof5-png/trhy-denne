@@ -4,11 +4,11 @@ Co se skutečně stalo, jaký je stav a proč. Pravidla formátu: `pravidla.md`.
 
 ## Aktuální stav
 - **Projekt:** Trhy denně (pracovní název), placený newsletter o amerických akciích a indexech s vlastním výběrem položek podle tarifu.
-- **Fáze:** Fáze 2 (prodejní stránka s ukázkovými daty) schválená uživatelem 2026-09-29. Další je fáze 3 (databáze, odběr, přihlášení). Otázky ze zastávky fáze 2 zůstávají v Otevřených otázkách, uživatel na ně zatím neodpověděl.
-- **Stack (nainstalováno):** Next.js 16.3.7 (App Router, Turbopack), React 19.2.8, TypeScript 5, Tailwind CSS v4, ESLint 9. Dále písma `@fontsource-variable/space-grotesk` a `montserrat`, Zod a `simple-icons` (jen vývojová). Motion je nainstalovaný, ale nepoužitý. Zatím **nenainstalováno**: Drizzle, `@neondatabase/serverless`, Stripe, Resend, PostHog, Better Auth.
+- **Fáze:** Fáze 3 (databáze, odběr, přihlášení) schválená 2026-09-29, ověřená jen lokálně (Postgres v Dockeru přes proxy Neonu, e-maily do konzole). Skutečný Neon a Resend nejsou, viz Otevřené otázky. Probíhá fáze 4 (platby).
+- **Stack (nainstalováno):** Next.js 16.3.7 (App Router, Turbopack), React 19.2.8, TypeScript 5, Tailwind CSS v4, ESLint 9. Dále písma `@fontsource-variable/space-grotesk` a `montserrat`, Zod a `simple-icons` (jen vývojová). Motion je nainstalovaný, ale nepoužitý. Od fáze 3 navíc Drizzle ORM 0.45, `drizzle-kit`, `@neondatabase/serverless` 1.1, Better Auth 1.7.6, Resend 6, React Email, `server-only`, `pg` (jen vývojová). Zatím **nenainstalováno**: Stripe, PostHog.
 - **Vzhled:** neo-brutalistický papírový styl podle cr-8.cz (od 2026-09-29). Reference v `reference/`. Stojí tokeny, obě písma, mřížka, horní pruh, hlavička se scrollspy a mobilním menu, kurzovní pás a všechny sekce prodejní stránky na `/`. Právní stránky `/podminky`, `/ochrana-udaju`, `/disclaimer` jsou prázdné s upozorněním.
-- **Co existuje:** prodejní stránka se všemi sekcemi ze zadání 4, dashboard s výběrem v `localStorage`, analýzy, formuláře a trasa `POST /api/subscribe`, která zatím nic neukládá a vrací 503. Všechna čísla jsou **ukázková data** ze `src/data/sample.ts` a web to říká v pásu, v tabuli, v dashboardu, v analýzách i v patičce.
-- **Git:** vlastní repozitář v `Desktop/SHARES.cz`, větev `main`, fáze 1 v commitu `14a9e15`, fáze 2 v commitu hned po něm (viz `git log`). Žádný vzdálený repozitář zatím není.
+- **Co existuje:** prodejní stránka se všemi sekcemi ze zadání 4, dashboard s výběrem v `localStorage`, analýzy. Od fáze 3 schéma a migrace, odběr s double opt-in (`/api/subscribe`, `/potvrzeni`, `/api/confirm`, `/dekujeme`), přihlášení odkazem (`/prihlaseni`, `/prihlaseni/overit`), účet `/ucet` s výběrem uloženým v databázi a limitem v transakci, `/api/watchlist`, `/api/symbols/search`. Bez databáze a e-mailu vše pravdivě vrací 503. Všechna čísla jsou **ukázková data** ze `src/data/sample.ts` a web to říká v pásu, v tabuli, v dashboardu, v analýzách, v účtu i v patičce.
+- **Git:** vlastní repozitář v `Desktop/SHARES.cz`, větev `main`, fáze 1 `14a9e15`, fáze 2 `c89cf34`, fáze 3 v commitu „fáze 3: databáze, odběr a přihlášení“. Žádný vzdálený repozitář zatím není.
 
 ## Klíčová rozhodnutí
 Nebudou se znovu otevírat bez výslovného pokynu uživatele.
@@ -33,6 +33,12 @@ Nebudou se znovu otevírat bez výslovného pokynu uživatele.
 - **2026-09-29:** Loga položek kreslí `SymbolIcon`, `BrandMark` zůstává značkou webu. Důvod: zadání 2.5 používalo stejný název pro dvě různé věci.
 - **2026-09-29:** `security.txt` se zatím **nenasazuje**. Leží jako šablona v `.claude/security/security.txt.template`. Důvod: kontakt není rozhodnutý a zástupná adresa v `security.txt` slibuje cestu hlášení, která nikam nevede.
 
+- **2026-09-29:** Přihlášení je **Better Auth** s magic linkem. Důvod: návrh zadání (sekce 3) a zadání delegovalo ověření a zápis rozhodnutí. Ověřeno: Auth.js je od září 2025 u týmu Better Auth v režimu jen bezpečnostních oprav a pro nové projekty odkazuje na Better Auth. Better Auth 1.7.6 (vydání 2026-09-24) podporuje Next.js 16 a Drizzle 0.45. Uživatel to může změnit na zastávce.
+- **2026-09-29:** Better Auth sdílí tabulku `users` ze zadání (žádná druhá tabulka uživatelů). Přidané sloupce, které knihovna vyžaduje: `name`, `email_verified`, `image`, `updated_at`. ID jsou UUID. Důvod: jeden zdroj pravdy o uživateli.
+- **2026-09-29:** Po neúspěšné platbě (`past_due`) se placené reporty posílají ještě **7 dní**, pak stojí, dokud Stripe platbu nevybere nebo předplatné nezruší. Důvod: rozhodnutí uživatele (návrh zadání 5.5).
+- **2026-09-29:** Fáze 4 se testuje ve **vlastním Stripe sandboxu Trhy denně**, ne v sandboxech jiných projektů (EstatIQ, Companion AI), do kterých je Stripe CLI přihlášené. Založí ho uživatel. Důvod: nemíchat produkty a zákazníky mezi projekty.
+- **2026-09-29:** Účet vzniká jen odběrem se souhlasem. Přihlášení nový účet nezaloží a na neznámou adresu nic nepošle. Důvod: souhlas se zpracováním je podmínka zadání 5.4.
+
 ## Otevřené otázky
 Čekají na uživatele. Po zodpovězení smazat. Plný seznam s návrhy řešení je v `PROJECT-BRIEF.md`, sekce 13.
 - Název značky a doména. Do rozhodnutí se používá pracovní název Trhy denně z `src/lib/site.ts`.
@@ -41,13 +47,15 @@ Nebudou se znovu otevírat bez výslovného pokynu uživatele.
 - Rozsah trhů: jen USA, nebo i další.
 - Ranní doručení út až so, nebo po až pá.
 - Práh výrazného pohybu podle tarifu (návrh 3 % všude, případně 1,5 % pro Plus).
-- Lhůta po neúspěšné platbě (návrh 7 dní).
 - Loga a ochranné známky, právní posouzení.
 - Cookie lišta a režim PostHog.
 - Právní texty a znění souhlasů, DPH a Stripe Tax, forma podnikání, konkurenční doložka.
 - **CSP: nonce, nebo experimentální SRI?** Next.js 16 nabízí `experimental.sri` (hash skriptů při buildu), které zachovává statické stránky a keš na CDN. Rozhodnutí z 2026-09-29 (nonce přes `proxy.ts`) vzniklo bez této možnosti a platí, dokud ho uživatel nezmění. SRI je označené jako experimentální.
 - Kontakt pro `security.txt`.
-- Knihovna přihlášení (návrh Better Auth, ověřit aktuální stav).
+- **Neon: kdo založí projekt?** Kód je hotový, chybí `DATABASE_URL`. Návrh: projekt v regionu EU (Frankfurt) přes Vercel Marketplace, aby se proměnné propsaly samy. Jde o účet a případné náklady, proto rozhoduje uživatel. Pak `npm run db:migrate` a `npm run db:seed`.
+- **Resend: klíč a odesílací doména.** Bez nich odběr v produkci neběží. Bez ověřené domény Resend pošle jen z `onboarding@resend.dev` a jen na adresu majitele účtu, což stačí na test. Souvisí s otázkou názvu značky a domény.
+- **Upozornění na plný limit je mimo obrazovku,** když člověk klikne na dlaždici níž na stránce. Objeví se nahoře v ovládací kartě. Čtečka ho oznámí, oko ne. Platí pro ukázku i účet (ukázka to měla už ve fázi 2). Návrh: zobrazit upozornění i u dlaždice, na kterou člověk klikl, nebo lištu přilepenou dole. Mění vzhled, proto rozhoduje uživatel.
+- **Odchylky od zadání z fáze 3 k potvrzení:** (1) potvrzovací odkaz vede na `/potvrzeni` s tlačítkem, `GET /api/confirm` jen přesměruje (zadání 5.3 chtělo GET, který potvrzuje). (2) `users.requested_tier` navíc. (3) tabulka `rate_limits` navíc. (4) tabulky Better Auth. Pokud platí, promítnout do zadání 5.2 a 5.3.
 - Reference ben.ai a chase.ai: ben.ai se načetlo jen jako text (osobní web s videem), chase.ai blokuje automatický přístup. Uživatel dodá screenshoty a řekne, co z nich chce.
 - Logo (kroužek z cr-8 se nekopíruje). Do rozhodnutí je značka jen textový znak v `BrandMark`.
 - **Potvrdit řešení rozporů ze zadání (fáze 2):** (1) vysvětlení příčin je ve Start i Plus podle Klíčového rozhodnutí, ne jen v Plus podle tabulky 1.1, a ceník i FAQ to tak říkají. (2) Klik na dlaždici přidává do výběru, analýzu otevírá šipka v rohu. Pokud platí, opravit tabulku 1.1 v zadání.
@@ -63,7 +71,11 @@ Aby to další relace neopravila jako chybu.
 - **Plynulý scroll (Lenis) a GSAP.** Navrženo, ale neschváleno. Přidat jen s důvodem.
 - **Animované pozadí ze sítě bodů a ilustrace robota z uzlů** (podpisové prvky cr-8). Vědomě se nekopírují.
 - **Prvky z ben.ai a chase.ai.** Nebyly vizuálně posouzeny, nepřebírá se nic.
-- **Odkaz "Přihlásit" v navigaci.** Přibude až s trasou `/prihlaseni` (fáze 3).
+- **Popisek vedle loga pod 1440 px.** S odkazem Přihlásit se navigace na 1280 px nevešla na řádek. Popisek se ukazuje až od 1440 px (dřív od 1280).
+- **Odhlášení odběru (`/api/unsubscribe`).** Zadání ho uvádí v 5.3, fáze 3 ho nemá v krocích. Reporty zatím nechodí, takže se není z čeho odhlašovat. Přijde s reporty ve fázi 5, včetně hlaviček `List-Unsubscribe`.
+- **Klientská knihovna Better Auth.** Není potřeba, vše jde přes serverové akce. Z HTTP rozhraní knihovny je otevřená jen jedna cesta (viz `.claude/security/DECISIONS.md`).
+- **Veřejné vyhledávání na prodejní stránce přes API.** Dashboard dál hledá v ukázkovém katalogu v prohlížeči, aby prodejní stránka nepotřebovala databázi. Účet hledá přes `/api/symbols/search`.
+- **IP adresa u relace.** Neukládá se, nepotřebujeme ji. IP se ukládá jen u souhlasu, kde ji zadání chce jako důkaz.
 - **Indexování webem.** Web je `noindex` do rozhodnutí o spuštění.
 - **HSTS `preload`.** Až po měsíci čistého provozu.
 - **Evropské trhy.** Vyžadují jiné časy, kalendář a data.
@@ -73,11 +85,22 @@ Aby to další relace neopravila jako chybu.
 - **Popisek nad nadpisem hera.** Opakoval doslova popisek v hlavičce. Odebráno při sebekritice, hero vystačí s nadpisem a odstavcem.
 - **Druhý předěl s kosočtvercem** (mezi analýzami a černým pruhem). Černý pruh je předěl sám o sobě. Zadání ho v pořadí sekcí uvádí, vědomě vynecháno.
 - **Dopočítání čísel na všech dlaždicích.** Jen na hlavní dlaždici indexu. Dvacet počítadel najednou by byl šum.
-- **Omezení počtu požadavků na `POST /api/subscribe`.** Trasa nic neukládá. Přijde ve fázi 3 s databází.
 - **Popisek vedle loga pod 1280 px.** Na 1024 px se s navigací nevešel na řádek a stránka přetékala.
 
 ## Seznam změn
 Nejnovější nahoře.
+
+### 2026-09-29: Zastávka fáze 3 schválena
+- **Co:** Uživatel schválil fázi 3 a požádal o commit. Rozhodl lhůtu po neúspěšné platbě (7 dní) a samostatný Stripe sandbox pro fázi 4.
+- **Proč:** na pokyn uživatele.
+- **Dopad:** Odblokovává fázi 4. Odchylky od zadání z fáze 3 (bod v Otevřených otázkách) uživatel výslovně nepotvrdil, zůstávají otevřené.
+- **Soubory:** `memory/memory.md`, `memory/index.md`
+
+### 2026-09-29: Fáze 3, databáze, odběr a přihlášení
+- **Co:** Schéma podle zadání 5.2 v Drizzle a tři migrace (`pg_trgm`, schéma, `plan_limits`). Seed katalogu (50 položek) a vitríny (20) z ukázkových dat, SPY a QQQ jako `etf`. Odběr s double opt-in: souhlas s časem, IP a verzí, token jen jako SHA-256 s platností 48 h, e-maily v React Email (potvrzení, přihlášení, „odběr už máte“). Přihlášení Better Auth s magic linkem, stránky `/prihlaseni`, `/prihlaseni/overit`, `/potvrzeni`, `/dekujeme`, `/ucet`. Výběr v účtu přes `PUT /api/watchlist` s transakčním limitem podle 5.7, hledání `/api/symbols/search` nad trigramy. Omezení počtu požadavků v Postgresu. `WatchlistPicker` rozdělen na ukázku a účet se společným zobrazením. `checkAdd` bere limity z `plan_limits`. Odkaz Přihlásit v hlavičce. Formulář odběru umí 429 a bez JS přesměruje na `/dekujeme`. Patička větu „Web zatím neslouží k odběru“ ukazuje jen tehdy, když odběr neběží. Lokální vývoj přes `docker-compose.yml`. `.env.example` a výjimka v `.gitignore`.
+- **Proč:** kroky 14 až 17 fáze 3 zadání.
+- **Dopad:** Ověřeno lokálně (podrobně v `.claude/security/AUDIT-LOG.md`): 17 kontrol toku v Chrome, souběh přímo na Postgresu (bez zámku 14 položek při limitu 5, se zámkem 5), CSP na nových stránkách v produkčním buildu bez porušení, navigace na jednom řádku od 1024 do 1920 px, lint a typy čisté. **Nefungovalo:** test souběhu přes HTTP nic nedokazuje, protože lokální proxy Neonu řadí spojení za sebe (stejný výsledek i bez zámku). `db.localtest.me` z návodu Neonu tady DNS nepřeloží, používá se `localhost`. **Opraveno po kontrole:** navigace se na 1280 px zalomila, upozornění u Free mělo „Start jich má 5“ bez předmětu, potvrzení slibovalo „první přehled v neděli“, přestože reporty neběží. Při testu jsem příkazem `pkill -f "next dev"` ukončil i starý vývojový server tohoto projektu z 15:42 na portu 3000.
+- **Soubory:** `src/db/`, `drizzle/`, `drizzle.config.ts`, `docker-compose.yml`, `scripts/seed.mts`, `src/emails/`, `src/lib/` (env, auth, email, subscriptions, watchlist, rate-limit, http, plans, symbols, site), `src/app/api/` (subscribe, confirm, auth, watchlist, symbols/search), `src/app/` (prihlaseni, potvrzeni, dekujeme, ucet), `src/components/` (WatchlistPicker, PageShell, Header, Footer, SignupForm), `src/data/sample.ts`, `package.json`, `tsconfig.json`, `.gitignore`, `.env.example`, `AGENTS.md`, `.claude/security/`
 
 ### 2026-09-29: Zastávka fáze 2 schválena
 - **Co:** Uživatel schválil fázi 2 a požádal o commit. Na pět otázek ze zastávky (vysvětlení ve Startu, klik na dlaždici, tvrzení o třech minutách, ticker SPCX, odinstalace Motion) výslovně neodpověděl, proto zůstávají v Otevřených otázkách a tabulka 1.1 v zadání se zatím neopravuje.

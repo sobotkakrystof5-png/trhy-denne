@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BrandMark } from "./BrandMark";
 import { SAMPLE_DATA_SENTENCE } from "@/data/sample";
+import { accountsReady } from "@/lib/env";
 import { legalPages, site } from "@/lib/site";
 
 export function Footer() {
@@ -43,7 +44,8 @@ export function Footer() {
         </div>
 
         <p className="mt-12 border-t-2 border-cream/25 pt-6 text-[0.9375rem] text-cream">
-          {SAMPLE_DATA_SENTENCE} Web zatím neslouží k odběru.
+          {SAMPLE_DATA_SENTENCE}
+          {accountsReady() ? null : " Web zatím neslouží k odběru."}
         </p>
       </div>
     </footer>

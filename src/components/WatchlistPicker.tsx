@@ -1,6 +1,14 @@
 "use client";
 
-import { useId, useMemo, useState, useSyncExternalStore } from "react";
+import Link from "next/link";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import { ChangeChip } from "./ui/ChangeChip";
 import { Segmented } from "./ui/Segmented";
 import { CountUp } from "./CountUp";
@@ -11,21 +19,28 @@ import type { ShowcaseSymbol, SymbolInfo } from "@/data/sample";
 import { formatPercentChange, formatUsd, plural } from "@/lib/format";
 import {
   checkAdd,
+  defaultLimits,
   pickerTiers,
   plans,
   type AddCheck,
+  type Limits,
   type PickerTier,
+  type Tier,
 } from "@/lib/plans";
-import { analysisId, matches, type PickerItem } from "@/lib/symbols";
+import { analysisId, matches, monogramFor, uiKind, type PickerItem } from "@/lib/symbols";
 
 type Stored = { v: 1; tier: PickerTier; selection: string[] };
 
 const MAX_STORED = 100;
 
 /**
- * Nástroj pro výběr položek. Na prodejní stránce žije výběr jen
- * v prohlížeči. Ve fázi 3 tatáž komponenta poběží v /ucet nad uloženým
- * výběrem a limit navíc pohlídá server (checkAdd je sdílená).
+ * Nástroj pro výběr položek ve dvou podobách se stejným vzhledem:
+ *
+ * - WatchlistPicker: ukázka na prodejní stránce, výběr žije jen
+ *   v prohlížeči a tarif se dá přepínat,
+ * - AccountWatchlist: účet, výběr je v databázi, tarif je skutečný
+ *   a limit hlídá server v transakci. UI volá stejné checkAdd jen proto,
+ *   aby zbytečně neposílalo požadavek, o kterém ví, že neprojde.
  */
 export function WatchlistPicker({
   items,
@@ -42,8 +57,6 @@ export function WatchlistPicker({
   storageKey: string;
 }) {
   const ids = useId();
-  const drawRef = useDrawOnView<HTMLUListElement>();
-
   const [query, setQuery] = useState("");
   const [notice, setNotice] = useState<AddCheck | null>(null);
 
@@ -55,13 +68,7 @@ export function WatchlistPicker({
     () => DEFAULT_STORED,
   );
 
-  const known = useMemo(() => {
-    const map = new Map<string, PickerItem>();
-    for (const item of catalog) map.set(item.ticker, item);
-    for (const item of items) map.set(item.ticker, item);
-    return map;
-  }, [items, catalog]);
-
+  const known = useKnown(items, catalog);
   const tier = stored.tier;
   const selection = useMemo(
     () => stored.selection.filter((ticker) => known.has(ticker)),
@@ -70,8 +77,7 @@ export function WatchlistPicker({
   const setSelection = (next: string[]) =>
     writeStored(storageKey, { v: 1, tier, selection: next.slice(0, MAX_STORED) });
 
-  const limit = plans[tier].maxWatchlist;
-  const over = Math.max(selection.length - limit, 0);
+  const limit = defaultLimits[tier];
 
   const toggle = (ticker: string) => {
     if (selection.includes(ticker)) {
@@ -105,8 +111,268 @@ export function WatchlistPicker({
     ];
   }, [searching, items, catalog, query]);
 
+  return (
+    <PickerView
+      ids={ids}
+      query={query}
+      onQuery={setQuery}
+      searching={searching}
+      visible={visible}
+      featuredTicker={featuredTicker}
+      analysisLinks={analysisLinks}
+      known={known}
+      tier={tier}
+      limit={limit}
+      selection={selection}
+      isInactive={(_, index) => index >= limit}
+      activeCount={Math.min(selection.length, limit)}
+      notice={notice}
+      onToggle={toggle}
+      tierControl={
+        <Segmented
+          legend="Zobrazit jako tarif"
+          name={`${ids}-tier`}
+          value={tier}
+          onChange={changeTier}
+          className="md:w-[22rem]"
+          options={pickerTiers.map((value) => ({
+            value,
+            label: (
+              <>
+                {plans[value].name}
+                <span aria-hidden="true" className="ml-1.5 opacity-70">
+                  {plans[value].maxWatchlist}
+                </span>
+                <span className="sr-only">
+                  , {plans[value].maxWatchlist} míst
+                  {plans[value].available ? "" : ", připravujeme"}
+                </span>
+              </>
+            ),
+          }))}
+        />
+      }
+    />
+  );
+}
+
+export type AccountEntry = { ticker: string; active: boolean };
+
+type SearchHit = { ticker: string; name: string; kind: string; hasData: boolean };
+
+export function AccountWatchlist({
+  items,
+  selectedInfo,
+  tier,
+  limits,
+  initial,
+}: {
+  /** Vitrína s ukázkovými daty. */
+  items: ShowcaseSymbol[];
+  /** Názvy položek z výběru, které ve vitríně nejsou. */
+  selectedInfo: SymbolInfo[];
+  tier: Tier;
+  /** Z tabulky plan_limits. */
+  limits: Limits;
+  initial: AccountEntry[];
+}) {
+  const ids = useId();
+  const [query, setQuery] = useState("");
+  const [notice, setNotice] = useState<AddCheck | null>(null);
+  const [entries, setEntries] = useState(initial);
+  const [pending, setPending] = useState<string | null>(null);
+  const [failure, setFailure] = useState<string | null>(null);
+  const [results, setResults] = useState<{ q: string; items: PickerItem[] } | null>(null);
+  const [seen, setSeen] = useState<PickerItem[]>([]);
+
+  const extra = useMemo(() => [...selectedInfo, ...seen], [selectedInfo, seen]);
+  const known = useKnown(items, extra);
+  const limit = limits[tier];
+  const selection = entries.map((entry) => entry.ticker);
+  const inactive = new Set(entries.filter((entry) => !entry.active).map((entry) => entry.ticker));
+  const activeCount = entries.length - inactive.size;
+
+  // Katalog má tisíce položek, hledá se na serveru. Výsledek se váže
+  // k dotazu, takže starší odpověď nepřepíše novější.
+  const trimmed = query.trim();
+  useEffect(() => {
+    if (!trimmed) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/symbols/search?q=${encodeURIComponent(trimmed)}`, {
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error(String(response.status));
+        const data = (await response.json()) as { items: SearchHit[] };
+        const found = data.items.map((hit): PickerItem => {
+          const showcaseItem = items.find((item) => item.ticker === hit.ticker);
+          return (
+            showcaseItem ?? {
+              ticker: hit.ticker,
+              name: hit.name,
+              kind: uiKind(hit.kind),
+              monogram: monogramFor(hit.ticker),
+            }
+          );
+        });
+        setResults({ q: trimmed, items: found });
+        setSeen((previous) => [...previous, ...found].slice(-200));
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          setResults({ q: trimmed, items: [] });
+          setFailure("Hledání teď nefunguje. Zkuste to za chvíli znovu.");
+          console.error(error);
+        }
+      }
+    }, 200);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [trimmed, items]);
+
+  const searching = trimmed.length > 0;
+  const visible = searching ? (results?.q === trimmed ? results.items : null) : items;
+
+  const toggle = async (ticker: string) => {
+    if (pending) return;
+    const selected = selection.includes(ticker);
+    if (!selected) {
+      const check = checkAdd(activeCount, tier, limits);
+      if (!check.ok) {
+        setNotice(check);
+        return;
+      }
+    }
+
+    setPending(ticker);
+    setFailure(null);
+    try {
+      const response = await fetch("/api/watchlist", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ op: selected ? "remove" : "add", ticker }),
+      });
+      const data = (await response.json().catch(() => null)) as {
+        items?: AccountEntry[];
+        limit?: number;
+        upgrade?: Tier | null;
+      } | null;
+      if (data?.items) setEntries(data.items);
+
+      if (response.ok) setNotice(null);
+      else if (response.status === 409 && data)
+        setNotice({ ok: false, limit: data.limit ?? limit, upgrade: data.upgrade ?? null });
+      else if (response.status === 401)
+        setFailure("Přihlášení vypršelo. Obnovte stránku a přihlaste se znovu.");
+      else if (response.status === 429)
+        setFailure("Změn bylo za chvíli moc. Počkejte minutu a zkuste to znovu.");
+      else setFailure("Změnu se nepodařilo uložit. Zkuste to znovu.");
+    } catch {
+      setFailure("Spojení se serverem se nepovedlo. Zkontrolujte připojení a zkuste to znovu.");
+    } finally {
+      setPending(null);
+    }
+  };
+
+  return (
+    <PickerView
+      ids={ids}
+      query={query}
+      onQuery={(value) => {
+        setQuery(value);
+        setFailure(null);
+      }}
+      searching={searching}
+      visible={visible}
+      featuredTicker={undefined}
+      analysisLinks={false}
+      known={known}
+      tier={tier}
+      limit={limit}
+      selection={selection}
+      isInactive={(ticker) => inactive.has(ticker)}
+      activeCount={activeCount}
+      notice={notice}
+      failure={failure}
+      pending={pending}
+      onToggle={toggle}
+      account
+      tierControl={
+        <div className="md:w-[22rem]">
+          <p className="mb-2 font-display text-[0.9375rem] font-bold text-ink">Váš tarif</p>
+          <p className="flex h-14 items-center rounded-[var(--radius-field)] border-3 border-ink bg-cream px-5 font-display text-lg font-bold text-ink">
+            {plans[tier].name}
+            <span className="ml-2 font-semibold text-mute" data-numeric>
+              {limit > 0 ? `${limit} ${plural(limit, ["místo", "místa", "míst"])}` : "bez vlastního výběru"}
+            </span>
+          </p>
+        </div>
+      }
+    />
+  );
+}
+
+function useKnown(items: PickerItem[], extra: PickerItem[]) {
+  return useMemo(() => {
+    const map = new Map<string, PickerItem>();
+    for (const item of extra) map.set(item.ticker, item);
+    for (const item of items) map.set(item.ticker, item);
+    return map;
+  }, [items, extra]);
+}
+
+function PickerView({
+  ids,
+  query,
+  onQuery,
+  searching,
+  visible,
+  featuredTicker,
+  analysisLinks,
+  known,
+  tier,
+  limit,
+  selection,
+  isInactive,
+  activeCount,
+  notice,
+  failure = null,
+  pending = null,
+  onToggle,
+  tierControl,
+  account = false,
+}: {
+  ids: string;
+  query: string;
+  onQuery: (value: string) => void;
+  searching: boolean;
+  /** null = výsledky hledání se teprve načítají. */
+  visible: PickerItem[] | null;
+  featuredTicker?: string;
+  analysisLinks: boolean;
+  known: Map<string, PickerItem>;
+  tier: Tier;
+  limit: number;
+  selection: string[];
+  isInactive: (ticker: string, index: number) => boolean;
+  activeCount: number;
+  notice: AddCheck | null;
+  failure?: string | null;
+  pending?: string | null;
+  onToggle: (ticker: string) => void;
+  tierControl: ReactNode;
+  account?: boolean;
+}) {
+  const drawRef = useDrawOnView<HTMLUListElement>();
+  const over = selection.length - activeCount;
+
   const featured =
-    !searching && featuredTicker && visible[0]?.ticker === featuredTicker && visible.length >= 5;
+    !searching &&
+    featuredTicker &&
+    visible?.[0]?.ticker === featuredTicker &&
+    visible.length >= 5;
 
   return (
     <div>
@@ -124,59 +390,49 @@ export function WatchlistPicker({
               type="search"
               autoComplete="off"
               spellCheck={false}
+              maxLength={40}
               placeholder="třeba NVDA nebo Tesla"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => onQuery(event.target.value)}
               className="h-14 w-full rounded-[var(--radius-field)] border-3 border-ink bg-cream px-5 text-lg text-ink placeholder:text-mute focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-ink"
             />
           </div>
-          <Segmented
-            legend="Zobrazit jako tarif"
-            name={`${ids}-tier`}
-            value={tier}
-            onChange={changeTier}
-            className="md:w-[22rem]"
-            options={pickerTiers.map((value) => ({
-              value,
-              label: (
-                <>
-                  {plans[value].name}
-                  <span aria-hidden="true" className="ml-1.5 opacity-70">
-                    {plans[value].maxWatchlist}
-                  </span>
-                  <span className="sr-only">
-                    , {plans[value].maxWatchlist} míst
-                    {plans[value].available ? "" : ", připravujeme"}
-                  </span>
-                </>
-              ),
-            }))}
-          />
+          {tierControl}
         </div>
 
         <div className="mt-6 border-t-2 border-ink pt-5">
-          <SlotCounter limit={limit} taken={selection.length} />
-          <p className="mt-3 font-display text-base font-bold text-ink" data-numeric>
-            Obsazeno {Math.min(selection.length, limit)} z {limit}{" "}
-            {plural(limit, ["místa", "míst", "míst"])}
-            {over > 0 ? (
-              <span className="font-semibold text-loss-ink">
-                , {over} {plural(over, ["položka je", "položky jsou", "položek je"])} nad limit tarifu
-              </span>
-            ) : null}
-          </p>
+          {limit > 0 ? (
+            <>
+              <SlotCounter limit={limit} taken={activeCount} />
+              <p className="mt-3 font-display text-base font-bold text-ink" data-numeric>
+                Obsazeno {activeCount} z {limit}{" "}
+                {plural(limit, ["místa", "míst", "míst"])}
+                {over > 0 ? (
+                  <span className="font-semibold text-loss-ink">
+                    , {over} {plural(over, ["položka je", "položky jsou", "položek je"])} nad limit tarifu
+                  </span>
+                ) : null}
+              </p>
+            </>
+          ) : (
+            <p className="font-display text-base font-bold text-ink">
+              Tarif {plans[tier].name} vlastní výběr nemá. Každou neděli dostáváte
+              tři největší pohyby týdne.
+            </p>
+          )}
 
           {selection.length > 0 ? (
             <ul className="mt-4 flex flex-wrap gap-2" aria-label="Můj výběr">
               {selection.map((ticker, index) => {
                 const item = known.get(ticker);
-                const inactive = index >= limit;
+                const inactive = isInactive(ticker, index);
                 return (
                   <li key={ticker}>
                     <button
                       type="button"
-                      onClick={() => toggle(ticker)}
-                      className={`mech inline-flex min-h-11 items-center gap-2 rounded-full border-2 border-ink px-3.5 font-display text-sm font-bold uppercase tracking-[0.06em] ${
+                      onClick={() => onToggle(ticker)}
+                      disabled={pending === ticker}
+                      className={`mech inline-flex min-h-11 items-center gap-2 rounded-full border-2 border-ink px-3.5 font-display text-sm font-bold uppercase tracking-[0.06em] disabled:opacity-50 ${
                         inactive ? "border-dashed bg-cream text-mute" : "bg-salmon text-ink"
                       }`}
                     >
@@ -191,15 +447,21 @@ export function WatchlistPicker({
                 );
               })}
             </ul>
-          ) : (
+          ) : limit > 0 ? (
             <p className="mt-2 text-[0.9375rem] leading-normal text-mute">
               Zatím nic nevybráno. Klikněte na dlaždici, nebo položku najděte
               podle tickeru.
             </p>
-          )}
+          ) : null}
 
           <div aria-live="polite" className="empty:hidden">
-            {notice && !notice.ok ? <LimitNotice tier={tier} check={notice} /> : null}
+            {notice && !notice.ok ? (
+              <LimitNotice tier={tier} check={notice} account={account} />
+            ) : failure ? (
+              <p className="mt-4 rounded-[var(--radius-field)] border-3 border-loss-ink bg-paper px-5 py-4 text-[0.9375rem] font-semibold leading-normal text-loss-ink">
+                {failure}
+              </p>
+            ) : null}
           </div>
         </div>
       </div>
@@ -213,11 +475,17 @@ export function WatchlistPicker({
 
       <p aria-live="polite" className="sr-only">
         {searching
-          ? `${visible.length} ${plural(visible.length, ["výsledek", "výsledky", "výsledků"])}`
+          ? visible
+            ? `${visible.length} ${plural(visible.length, ["výsledek", "výsledky", "výsledků"])}`
+            : "Hledám"
           : ""}
       </p>
 
-      {visible.length > 0 ? (
+      {visible === null ? (
+        <p className="mt-6 rounded-[var(--radius-tile)] border-3 border-dashed border-ink bg-paper px-6 py-8 text-lg text-mute">
+          Hledám „{query.trim()}“.
+        </p>
+      ) : visible.length > 0 ? (
         <ul
           ref={drawRef}
           className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-6 md:gap-6 lg:grid-cols-12"
@@ -229,8 +497,9 @@ export function WatchlistPicker({
               featured={Boolean(featured) && index === 0}
               span={spanFor(index, visible.length, Boolean(featured))}
               selected={selection.includes(item.ticker)}
+              busy={pending === item.ticker}
               analysisHref={item.quote && analysisLinks ? `#${analysisId(item.ticker)}` : undefined}
-              onToggle={() => toggle(item.ticker)}
+              onToggle={() => onToggle(item.ticker)}
             />
           ))}
         </ul>
@@ -249,6 +518,7 @@ function Tile({
   featured,
   span,
   selected,
+  busy,
   analysisHref,
   onToggle,
 }: {
@@ -256,6 +526,7 @@ function Tile({
   featured: boolean;
   span: string;
   selected: boolean;
+  busy: boolean;
   analysisHref?: string;
   onToggle: () => void;
 }) {
@@ -276,15 +547,17 @@ function Tile({
   return (
     <li
       data-selected={selected ? "" : undefined}
+      aria-busy={busy || undefined}
       className={`tile relative flex flex-col rounded-[var(--radius-tile)] border-3 border-ink ${tone} ${span} ${
         featured ? "p-5 md:p-8" : "p-4 md:p-5"
-      }`}
+      } ${busy ? "opacity-60" : ""}`}
     >
       <button
         type="button"
         onClick={onToggle}
+        disabled={busy}
         aria-label={label}
-        className="tile-hit absolute inset-0 cursor-pointer rounded-[9px] focus-visible:outline-offset-[6px]"
+        className="tile-hit absolute inset-0 cursor-pointer rounded-[9px] focus-visible:outline-offset-[6px] disabled:cursor-wait"
       />
 
       <div aria-hidden="true" className="pointer-events-none relative flex h-full flex-col">
@@ -400,31 +673,45 @@ function SlotCounter({ limit, taken }: { limit: number; taken: number }) {
 function LimitNotice({
   tier,
   check,
+  account,
 }: {
-  tier: PickerTier;
+  tier: Tier;
   check: Extract<AddCheck, { ok: false }>;
+  account: boolean;
 }) {
   const current = plans[tier];
   const upgrade = check.upgrade ? plans[check.upgrade] : null;
   const places = (count: number) =>
     `${count} ${plural(count, ["místo", "místa", "míst"])}`;
 
+  const situation =
+    check.limit === 0
+      ? `Tarif ${current.name} vlastní výběr nemá.`
+      : `Tarif ${current.name} má ${places(check.limit)} a všechna jsou obsazená.`;
+  // "jich" se smí vztahovat jen k místům, která předchozí věta zmínila.
+  // U Free žádná nezmínila, proto celé "5 míst".
+  const offer = !upgrade
+    ? "Víc míst zatím žádný tarif nemá."
+    : check.limit === 0
+      ? upgrade.available
+        ? `${upgrade.name} má ${places(upgrade.maxWatchlist)}.`
+        : `${upgrade.name}, který připravujeme, bude mít ${places(upgrade.maxWatchlist)}.`
+      : upgrade.available
+        ? `${upgrade.name} jich má ${upgrade.maxWatchlist}.`
+        : `${upgrade.name}, který připravujeme, jich bude mít ${upgrade.maxWatchlist}.`;
+
   return (
     <div className="mt-4 flex flex-col gap-3 rounded-[var(--radius-field)] border-3 border-ink bg-sand px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
       <p className="text-[0.9375rem] font-semibold leading-normal text-ink">
-        Tarif {current.name} má {places(check.limit)} a všechna jsou obsazená.{" "}
-        {upgrade
-          ? upgrade.available
-            ? `${upgrade.name} jich má ${upgrade.maxWatchlist}.`
-            : `${upgrade.name}, který připravujeme, jich bude mít ${upgrade.maxWatchlist}.`
-          : "Víc míst zatím žádný tarif nemá."}
+        {situation} {offer}
+        {account && upgrade ? " Placené tarify zatím nespouštíme." : ""}
       </p>
-      <a
-        href="#cenik"
+      <Link
+        href="/#cenik"
         className="shrink-0 font-display text-sm font-bold uppercase tracking-[0.08em] text-ink underline underline-offset-4"
       >
         Porovnat tarify
-      </a>
+      </Link>
     </div>
   );
 }

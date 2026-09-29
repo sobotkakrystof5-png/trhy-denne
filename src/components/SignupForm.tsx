@@ -17,6 +17,7 @@ type Status =
   | { kind: "submitting" }
   | { kind: "not_ready" }
   | { kind: "success"; email: string }
+  | { kind: "rate_limited" }
   | { kind: "network_error" }
   | { kind: "server_error" };
 
@@ -103,6 +104,7 @@ export function SignupForm({ withTier = false }: { withTier?: boolean }) {
         return;
       }
       if (response.status === 503) return setStatus({ kind: "not_ready" });
+      if (response.status === 429) return setStatus({ kind: "rate_limited" });
       if (response.status === 400) {
         const data = (await response.json().catch(() => null)) as {
           fields?: SignupFieldErrors;
@@ -271,6 +273,11 @@ export function SignupForm({ withTier = false }: { withTier?: boolean }) {
           <StatusBox>
             Potvrzovací e-mail jsme poslali na {status.email}. Odběr začne, až
             v něm kliknete na odkaz.
+          </StatusBox>
+        ) : status.kind === "rate_limited" ? (
+          <StatusBox tone="error">
+            Z vašeho připojení přišlo za chvíli moc pokusů. Zkuste to za pár
+            minut znovu.
           </StatusBox>
         ) : status.kind === "network_error" ? (
           <StatusBox tone="error">

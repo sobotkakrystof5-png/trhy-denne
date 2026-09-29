@@ -20,9 +20,9 @@ Blok `nextjs-agent-rules` nahoře pochází z `create-next-app` a `next dev` ho 
 - **Typ:** placený newsletter o amerických akciích a indexech s vlastním výběrem položek. Prodejní stránka, registrace, účet, předplatné
 - **Stav:** viz `memory/memory.md`, sekce Aktuální stav
 - **Jazyk webu a kódu komentářů:** čeština. Identifikátory v kódu anglicky
-- **Stack:** Next.js (App Router) 16.3.7 (Turbopack), React 19.2.8, TypeScript, Tailwind CSS v4, Motion, Drizzle ORM, `@neondatabase/serverless`, Zod, Stripe, Resend a React Email, PostHog (`posthog-js`), Better Auth (návrh, viz otevřené otázky), `simple-icons`, písma `@fontsource-variable/space-grotesk` (nadpisy, popisky, tlačítka, čísla) a `@fontsource-variable/montserrat` (text), potvrzené uživatelem. Motion je nainstalovaný, ale nepoužitý (viz Klíčové technické fakty)
+- **Stack:** Next.js (App Router) 16.3.7 (Turbopack), React 19.2.8, TypeScript, Tailwind CSS v4, Motion, Drizzle ORM 0.45 (+ `drizzle-kit`, `pg` jen pro migrace a seed), `@neondatabase/serverless`, Zod 4, Better Auth 1.7 (magic link), Resend a React Email, Stripe (fáze 4), PostHog (`posthog-js`, fáze 5), `simple-icons`, písma `@fontsource-variable/space-grotesk` (nadpisy, popisky, tlačítka, čísla) a `@fontsource-variable/montserrat` (text), potvrzené uživatelem. Motion je nainstalovaný, ale nepoužitý (viz Klíčové technické fakty)
 - **Hosting:** Vercel. **Databáze:** Neon Postgres. **Automatizace:** n8n (mimo tento repozitář)
-- **Příkazy:** `npm run dev`, `npm run build`, `npm run lint`, `node scripts/gen-icons.mjs` (znovu vygeneruje ikony), `npx drizzle-kit generate` a `npx drizzle-kit migrate` (migrace)
+- **Příkazy:** `npm run dev`, `npm run build`, `npm run lint`, `node scripts/gen-icons.mjs` (znovu vygeneruje ikony), `npm run db:up` (lokální Postgres a proxy Neonu v Dockeru), `npm run db:generate` a `npm run db:migrate` (migrace přes drizzle-kit), `npm run db:seed` (katalog a vitrína z ukázkových dat)
 
 ## Struktura repozitáře (cílový stav)
 
@@ -40,10 +40,13 @@ Blok `nextjs-agent-rules` nahoře pochází z `create-next-app` a `next dev` ho 
 ├── .github/workflows/           security.yml (audit, tajemství, hlavičky)
 ├── public/.well-known/          security.txt
 ├── scripts/gen-icons.mjs
-├── drizzle/                     migrace
+├── docker-compose.yml           jen vývoj: Postgres 17 a proxy napodobující Neon
+├── drizzle.config.ts
+├── drizzle/                     migrace (0000 pg_trgm, 0001 schéma, 0002 plan_limits)
+├── scripts/seed.mts             seed katalogu a vitríny (node, bez sestavení)
 └── src/
     ├── proxy.ts                 CSP s nonce (v Next.js 16 místo middleware.ts)
-    ├── app/                     trasy: /, /prihlaseni, /ucet, /potvrzeni, /dekujeme,
+    ├── app/                     trasy: /, /prihlaseni (+ /overit), /ucet, /potvrzeni, /dekujeme,
     │                            /podminky, /ochrana-udaju, /disclaimer, /api/*
     ├── components/              Header, TickerTape, ScrollProgress, BrandMark (značka webu), SymbolIcon (loga položek),
     │                            Sparkline, CountUp, WatchlistPicker, AnalysisList, SignupForm, TimeCalculator, Footer, LegalPage
@@ -51,8 +54,11 @@ Blok `nextjs-agent-rules` nahoře pochází z `create-next-app` a `next dev` ho 
     │   │                        Trust, Audience, Pricing, Faq, ClosingCta
     │   └── ui/                  Button, Card, ChangeChip, Badge, Segmented, SectionDivider
     ├── data/                    sample.ts (ukázková data do zapojení API), icons.generated.ts
-    ├── db/                      schema.ts (Drizzle), klient Neon
-    └── lib/                     site.ts, format.ts, plans.ts (tarify, checkAdd), signup.ts, symbols.ts, dále podpisy HMAC, Stripe, Resend
+    ├── db/                      schema.ts (Drizzle), index.ts (HTTP klient a withTransaction přes Pool)
+    ├── emails/                  šablony React Email (Layout, templates)
+    └── lib/                     site.ts, format.ts, plans.ts (tarify, checkAdd), signup.ts, symbols.ts, env.ts,
+                                 auth.ts (Better Auth), email.tsx (Resend), subscriptions.ts, watchlist.ts,
+                                 rate-limit.ts, http.ts, později podpisy HMAC a Stripe
 ```
 
 ## Klíčové technické fakty
@@ -61,7 +67,12 @@ Blok `nextjs-agent-rules` nahoře pochází z `create-next-app` a `next dev` ho 
 - **`turbopack.root` v `next.config.ts`** ukazuje napevno na složku projektu. Bez toho si Next.js odvodí kořen z `package-lock.json` v domovské složce uživatele a ohlásí varování. Neodstraňovat.
 - **Přetečení kurzovního pásu** řídí třída `.ticker-viewport` v CSS, ne utilita v JSX. Utilita by přebila pravidlo pro `prefers-reduced-motion` a pás by u těch uživatelů zůstal zamrzlý a nečitelný.
 - **Dynamické vykreslování:** kořenový layout čte `headers()`, aby Next.js přidal nonce z `proxy.ts` ke svým skriptům. Důsledek: bez statické keše stránek. Data se cachují na úrovni dotazu.
-- **Databáze:** HTTP driver Neon na jednoduché dotazy, `Pool` (WebSocket) na transakce. Přidání položky do výběru je vždy transakce se zámkem uživatele (`SELECT … FOR UPDATE`). Schéma je v `PROJECT-BRIEF.md`, sekce 5.2.
+- **Databáze:** HTTP driver Neon na jednoduché dotazy (`db()`), `Pool` (WebSocket) na transakce (`withTransaction`, spojení se otevře a zavře v jednom volání). Přidání položky do výběru je vždy transakce se zámkem uživatele (`SELECT … FOR UPDATE`, `src/lib/watchlist.ts`). Schéma je v `src/db/schema.ts`, odvozené ze zadání 5.2, odchylky jsou popsané v hlavičce souboru. Migrace jen přes drizzle-kit.
+- **Lokální databáze:** `npm run db:up` spustí Postgres na `127.0.0.1:54329` a proxy Neonu na portu 4444. `DATABASE_URL=postgres://postgres:postgres@localhost:54329/main`. Ovladač pozná lokální hostitele (`localhost`, `127.0.0.1`, `db.localtest.me`) a přesměruje HTTP i WebSocket na proxy. `db.localtest.me` z návodu Neonu tady DNS nepřeloží. **Proxy řadí WebSocket spojení za sebe**, takže souběh transakcí přes aplikaci lokálně otestovat nejde. Test zámku jde přímo na Postgres.
+- **Zapojení funkcí podle prostředí:** `accountsReady()` v `src/lib/env.ts` vyžaduje `DATABASE_URL`, `BETTER_AUTH_SECRET` a e-mail. Bez nich odběr, potvrzení, přihlášení a výběr pravdivě vrací 503 a stránky to říkají. E-mail: s `RESEND_API_KEY` a `EMAIL_FROM` přes Resend, ve vývoji bez nich se text e-mailu vypíše do konzole serveru, v produkci bez nich e-mail neodejde a odběr neběží.
+- **Přihlášení:** Better Auth, jen odkaz v e-mailu (`disableSignUp`, token jako hash, 15 minut). Tabulky `users` (sdílená se zadáním), `sessions`, `accounts`, `verifications`. Z `/api/auth/*` je otevřená jen `GET /api/auth/magic-link/verify`. Odeslání odkazu a odhlášení jsou serverové akce (`src/app/prihlaseni/actions.ts`, `src/app/ucet/actions.ts`). Cookie `td.session_token`. Účet vzniká jen odběrem se souhlasem.
+- **Jednorázové odkazy z e-mailu** (potvrzení odběru, přihlášení) vedou na stránku s tlačítkem, token se spotřebuje až formulářem. Skenery pošty tak nic nepotvrdí ani nespotřebují.
+- **Omezení počtu požadavků:** `hit(limits.x, subjekt)` v `src/lib/rate-limit.ts` nad tabulkou `rate_limits`. Klíč je hash. IP bere z `x-forwarded-for` (Vercel).
 - **Limity tarifů** jsou v tabulce `plan_limits`, ne v kódu. UI a server čtou tentýž zdroj.
 - **Platby:** webhook Stripe přijímá `POST /api/webhooks/stripe` (surové tělo, ověření podpisu, idempotence přes `stripe_events`). Tarif se mapuje z ID ceny na serveru.
 - **n8n:** propojení podepsanými voláními (HMAC-SHA256, časová značka, platnost 5 minut). Render reportů dělá Next.js (`/api/internal/render-report`), n8n jen orchestruje. n8n používá vlastního databázového uživatele s minimálními právy.
@@ -70,8 +81,8 @@ Blok `nextjs-agent-rules` nahoře pochází z `create-next-app` a `next dev` ho 
 - **Ukázková data** jsou deterministická a viditelně označená, dokud není zapojené API.
 - **Ikony položek:** SVG ze `simple-icons` přes `SymbolIcon` (ne `BrandMark`, to je značka webu), jednobarevné v inkoustu v kroužku s výplní `--paper`. Cesty generuje `node scripts/gen-icons.mjs` do `src/data/icons.generated.ts`, balíček je jen vývojová závislost. Chybějící ikona a každý index dostanou monogram (nejvýš 3 znaky). Nikdy nestahuj loga z jiných zdrojů bez rozhodnutí uživatele.
 - **Pohyb je jen CSS.** Animace se spouštějí třídami a atributy `data-*` (`data-draw`, `data-open`, `data-selected`), hodnoty za běhu se píšou přes CSSOM. Žádný atribut `style` v JSX: CSP bez `'unsafe-inline'` by ho zablokovalo. Proto se nepoužívá Motion (`initial` vykresluje `style` na serveru). Všechno se vypíná při `prefers-reduced-motion` v jednom bloku v `globals.css`.
-- **Limit výběru** počítá `checkAdd` v `src/lib/plans.ts`. Dashboard ho volá teď, server ve fázi 3 tutéž funkci. Výběr návštěvníka drží `WatchlistPicker` v `localStorage` přes `useSyncExternalStore` (setState v efektu hlásí lint jako chybu).
-- **`POST /api/subscribe`** zatím nic neukládá a na platný požadavek vrací 503 (zadání 5.3). Validace je sdílená funkce `validateSignup` v `src/lib/signup.ts`, na serveru navíc Zod.
+- **Limit výběru** počítá `checkAdd(aktivních, tarif, limity)` v `src/lib/plans.ts`. Server ho volá uvnitř transakce s limity z `plan_limits`, účet s týmiž limity předanými ze serveru, ukázka na prodejní stránce s `defaultLimits` (kopie seedu). `WatchlistPicker` (ukázka, výběr v `localStorage` přes `useSyncExternalStore`) a `AccountWatchlist` (účet, `PUT /api/watchlist`, hledání přes `/api/symbols/search`) sdílejí zobrazení `PickerView`.
+- **`POST /api/subscribe`** uloží souhlas (čas, IP, verze znění) a pošle potvrzovací e-mail, logika je v `src/lib/subscriptions.ts`. Odpověď je stejná pro novou i existující adresu. Validace je sdílená funkce `validateSignup` v `src/lib/signup.ts`, na serveru navíc Zod.
 - **Test v Safari na localhostu** nejde přímo: `upgrade-insecure-requests` přepíše http na https. Viz `.claude/security/STATE.md`.
 - **Design tokeny** (barvy, tvary, stíny, písma) jsou v `@theme` v `src/app/globals.css` a přesná čísla v `PROJECT-BRIEF.md`, sekce 2.2 až 2.5. Barvy: `--ink #0C0C0A`, `--cream #F9F3E5`, `--salmon #E4B9A0`, `--mist #CED9DD`, `--sand #EBD69D` (změřeno ze screenshotů). Karty mají 3 px černý okraj a **tvrdý stín bez `blur`**. Barva karty nese význam (mist = index, sand = akcie, salmon = ve výběru).
 - **Velká písmena** (popisky, navigace, tlačítka) se dělají jen přes CSS `text-transform`, v HTML je běžný text.

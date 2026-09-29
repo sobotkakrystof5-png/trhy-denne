@@ -3,7 +3,7 @@
 Čti to jako první v každé relaci, před jakoukoli prací. Tento soubor sám nic neobsahuje, jen říká, kde co najdeš a v jakém stavu projekt je.
 
 ## 1. Stav projektu (jedna věta)
-**Fáze:** Fáze 2 (prodejní stránka s ukázkovými daty) schválená. Stojí všechny sekce, dashboard s výběrem, analýzy a formuláře (zatím bez ukládání). Další je fáze 3, databáze a odběr.
+**Fáze:** Fáze 3 schválená a commitnutá. Probíhá fáze 4, platby (Stripe). Chybí skutečný Neon, Resend a Stripe sandbox.
 Podrobnosti vždy v `memory.md`, sekce Aktuální stav.
 
 ## 2. Systémové soubory
@@ -22,7 +22,7 @@ Podrobnosti vždy v `memory.md`, sekce Aktuální stav.
 Živé zadání uživatele, `CLAUDE.md`, `memory/pravidla.md`, `memory/memory.md`, `AGENTS.md`. Rozpor se nikdy neřeší potichu, vždy se pojmenuje.
 
 ## 4. Mapa projektu
-Cílová struktura je v `AGENTS.md`, sekce Struktura repozitáře. Dnes existuje: `src/app/` (stránka, tři právní stránky, `api/subscribe`), `src/proxy.ts`, `src/components/` (+ `sections/`, `ui/`), `src/lib/`, `src/data/`, `scripts/gen-icons.mjs`, `.claude/security/`, `.github/workflows/`, `public/`, konfigurace v kořeni. Chybí `src/db/` a `drizzle/`, ty přijdou ve fázi 3.
+Cílová struktura je v `AGENTS.md`, sekce Struktura repozitáře. Dnes existuje: `src/app/` (stránka, tři právní stránky, `api/subscribe`), `src/proxy.ts`, `src/components/` (+ `sections/`, `ui/`), `src/lib/`, `src/data/`, `scripts/gen-icons.mjs`, `.claude/security/`, `.github/workflows/`, `public/`, konfigurace v kořeni. Od fáze 3 také `src/db/`, `src/emails/`, `drizzle/`, `docker-compose.yml`, `scripts/seed.mts`.
 
 ## 5. Rychlý start relace
 1. Přečti `CLAUDE.md`, `memory/index.md`, `memory/pravidla.md`, `memory/memory.md`, `AGENTS.md`.

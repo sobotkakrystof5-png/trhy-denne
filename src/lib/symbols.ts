@@ -25,6 +25,16 @@ export function matches(item: SymbolInfo, query: string): boolean {
   );
 }
 
+/** Čtyři písmena jsou v kroužku 44 px nečitelná, stačí začátek tickeru. */
+export function monogramFor(ticker: string): string {
+  return ticker.length > 3 ? ticker.slice(0, 2) : ticker;
+}
+
+/** Druh z katalogu na druh pro UI. Fondy SPY a QQQ web ukazuje jako indexy. */
+export function uiKind(kind: string): SymbolInfo["kind"] {
+  return kind === "stock" ? "stock" : "index";
+}
+
 export const ANALYSIS_PREFIX = "analyza-";
 
 /** Id řádku analýzy. Dashboard na něj odkazuje obyčejnou kotvou. */

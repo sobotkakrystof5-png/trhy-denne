@@ -46,3 +46,33 @@ ale platný požadavek dostane 503 a nic se neuloží.
 **Proč:** zadání 5.3 chce pravdivou odpověď místo falešného úspěchu a formulář musí
 jít skutečně odeslat a vyzkoušet. Omezení počtu požadavků chybí vědomě, dokud trasa
 nic nedělá. Přijde ve fázi 3.
+
+## 2026-09-29: Z Better Auth je přes HTTP otevřená jediná cesta
+**Rozhodnutí:** `src/app/api/auth/[...all]/route.ts` pouští jen `GET /api/auth/magic-link/verify`.
+Odeslání odkazu a odhlášení jdou přes serverové akce.
+**Proč:** plugin magic link pošle odkaz na jakoukoli adresu (`disableSignUp` se hlídá až při
+ověření) a jeho limit počtu požadavků je ve výchozím stavu v paměti instance. Otevřená cesta
+`/sign-in/magic-link` by šla použít k zasílání e-mailů na cizí adresy a obešla by vlastní limity.
+**Cena:** klientskou knihovnu Better Auth nejde použít. Nepotřebujeme ji.
+
+## 2026-09-29: Jednorázové odkazy z e-mailu vedou na stránku s tlačítkem
+**Rozhodnutí:** potvrzení odběru (`/potvrzeni`) i přihlášení (`/prihlaseni/overit`) spotřebují
+token až po odeslání formuláře. `GET /api/confirm` ze zadání 5.3 jen přesměruje na stránku.
+**Proč:** bezpečnostní skenery pošty (například Safe Links) odkazy otevírají. Token by
+spotřebovaly dřív než člověk. U double opt-in by navíc potvrzení udělal robot, ne adresát.
+**Cena:** jedno kliknutí navíc.
+
+## 2026-09-29: Formuláře neprozradí, kdo má účet
+**Rozhodnutí:** odběr i přihlášení odpovídají stejně pro novou i existující adresu. Odkaz pro
+přihlášení se posílá v `after()`, takže se neliší ani doba odpovědi. Potvrzený odběratel,
+který se přihlásí znovu, dostane e-mail „odběr už máte“, aby text „poslali jsme e-mail“
+zůstal pravdivý.
+**Cena:** člověk bez účtu se na přihlašovací stránce nedozví, že účet nemá. Text to říká
+podmínkou („pokud k adrese patří účet“).
+
+## 2026-09-29: Omezení počtu požadavků v Postgresu
+**Rozhodnutí:** tabulka `rate_limits`, pevné okno, jeden atomický příkaz. Klíč je hash.
+**Proč:** na Vercelu běží víc instancí, počítadlo v paměti by nic nehlídalo. Další služba
+(Upstash a podobně) by byla nová integrace a nový účet.
+**Cena:** jeden zápis do databáze navíc na každý chráněný požadavek. Při velkém provozu
+přehodnotit, případně doplnit pravidla firewallu Vercelu.
