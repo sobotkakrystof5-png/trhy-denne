@@ -3,7 +3,7 @@
 import { useEffect, useId, useState } from "react";
 import { BrandMark } from "./BrandMark";
 import { buttonClass } from "./ui/Button";
-import { ctaAnchor, ctaLabel, navItems, site } from "@/lib/site";
+import { anchorHref, ctaAnchor, ctaLabel, navItems, site } from "@/lib/site";
 
 /**
  * Hlavička s kotvami a scrollspy. Přilepení řeší SiteHeader, aby se
@@ -39,7 +39,7 @@ export function Header() {
     <header className="on-ink bg-ink text-cream">
       <div className="content-width flex h-18 items-center justify-between gap-6">
         <a
-          href="#top"
+          href={anchorHref("top")}
           className="flex shrink-0 items-center gap-3 text-cream no-underline"
         >
           <BrandMark size={32} />
@@ -48,9 +48,10 @@ export function Header() {
           </span>
           <span
             aria-hidden="true"
-            className="ml-1 hidden h-6 w-px bg-cream/30 lg:block"
+            className="ml-1 hidden h-6 w-px bg-cream/30 xl:block"
           />
-          <span className="nav-caps hidden text-cream/55 lg:block">
+          {/* Popisek až od 1280 px. Na 1024 px by se s navigací nevešel na řádek. */}
+          <span className="nav-caps hidden text-cream/55 xl:block">
             {site.tagline}
           </span>
         </a>
@@ -59,7 +60,7 @@ export function Header() {
           {navItems.map((item) => (
             <a
               key={item.id}
-              href={`#${item.id}`}
+              href={anchorHref(item.id)}
               aria-current={active === item.id ? "true" : undefined}
               className={`nav-caps border-b-3 pb-1 no-underline transition-colors ${
                 active === item.id
@@ -70,7 +71,7 @@ export function Header() {
               {item.label}
             </a>
           ))}
-          <a href={`#${ctaAnchor}`} className={buttonClass("cta", "no-underline")}>
+          <a href={anchorHref(ctaAnchor)} className={buttonClass("cta", "no-underline")}>
             {ctaLabel}
           </a>
         </nav>
@@ -99,7 +100,7 @@ export function Header() {
               {navItems.map((item) => (
                 <li key={item.id}>
                   <a
-                    href={`#${item.id}`}
+                    href={anchorHref(item.id)}
                     onClick={() => setOpen(false)}
                     aria-current={active === item.id ? "true" : undefined}
                     className={`nav-caps flex min-h-11 items-center border-b border-cream/15 no-underline ${
@@ -112,7 +113,7 @@ export function Header() {
               ))}
             </ul>
             <a
-              href={`#${ctaAnchor}`}
+              href={anchorHref(ctaAnchor)}
               onClick={() => setOpen(false)}
               className={buttonClass("cta", "mt-5 w-full no-underline")}
             >
@@ -126,8 +127,8 @@ export function Header() {
 }
 
 /**
- * Scrollspy. Sekce vznikají až ve fázi 2, takže se musí umět chovat
- * i v situaci, kdy na stránce zatím žádná není.
+ * Scrollspy. Na právních stránkách žádné sekce nejsou, proto se musí
+ * umět chovat i bez nich.
  */
 function useActiveSection() {
   const [active, setActive] = useState<string | null>(null);

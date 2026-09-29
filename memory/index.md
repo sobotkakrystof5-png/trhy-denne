@@ -3,7 +3,7 @@
 Čti to jako první v každé relaci, před jakoukoli prací. Tento soubor sám nic neobsahuje, jen říká, kde co najdeš a v jakém stavu projekt je.
 
 ## 1. Stav projektu (jedna věta)
-**Fáze:** Fáze 1 (kostra a zabezpečení) hotová, čeká se na zastávku. Stojí tokeny, hlavička, kurzovní pás a bezpečnostní hlavičky. Další je fáze 2, prodejní stránka.
+**Fáze:** Fáze 2 (prodejní stránka s ukázkovými daty) schválená. Stojí všechny sekce, dashboard s výběrem, analýzy a formuláře (zatím bez ukládání). Další je fáze 3, databáze a odběr.
 Podrobnosti vždy v `memory.md`, sekce Aktuální stav.
 
 ## 2. Systémové soubory
@@ -22,7 +22,7 @@ Podrobnosti vždy v `memory.md`, sekce Aktuální stav.
 Živé zadání uživatele, `CLAUDE.md`, `memory/pravidla.md`, `memory/memory.md`, `AGENTS.md`. Rozpor se nikdy neřeší potichu, vždy se pojmenuje.
 
 ## 4. Mapa projektu
-Cílová struktura je v `AGENTS.md`, sekce Struktura repozitáře. Dnes existuje: `src/app/` (`layout.tsx`, `page.tsx`, `globals.css`), `src/proxy.ts`, `src/components/` (+ `ui/`), `src/lib/`, `src/data/`, `.claude/security/`, `.github/workflows/`, `public/`, konfigurace v kořeni. Chybí `src/db/`, `drizzle/` a `scripts/`, ty přijdou ve fázích 3 a 5.
+Cílová struktura je v `AGENTS.md`, sekce Struktura repozitáře. Dnes existuje: `src/app/` (stránka, tři právní stránky, `api/subscribe`), `src/proxy.ts`, `src/components/` (+ `sections/`, `ui/`), `src/lib/`, `src/data/`, `scripts/gen-icons.mjs`, `.claude/security/`, `.github/workflows/`, `public/`, konfigurace v kořeni. Chybí `src/db/` a `drizzle/`, ty přijdou ve fázi 3.
 
 ## 5. Rychlý start relace
 1. Přečti `CLAUDE.md`, `memory/index.md`, `memory/pravidla.md`, `memory/memory.md`, `AGENTS.md`.

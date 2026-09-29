@@ -20,7 +20,7 @@ Blok `nextjs-agent-rules` nahoře pochází z `create-next-app` a `next dev` ho 
 - **Typ:** placený newsletter o amerických akciích a indexech s vlastním výběrem položek. Prodejní stránka, registrace, účet, předplatné
 - **Stav:** viz `memory/memory.md`, sekce Aktuální stav
 - **Jazyk webu a kódu komentářů:** čeština. Identifikátory v kódu anglicky
-- **Stack:** Next.js (App Router) 16.3.7 (Turbopack), React 19.2.8, TypeScript, Tailwind CSS v4, Motion, Drizzle ORM, `@neondatabase/serverless`, Zod, Stripe, Resend a React Email, PostHog (`posthog-js`), Better Auth (návrh, viz otevřené otázky), `simple-icons`, písma `@fontsource-variable/space-grotesk` (nadpisy, popisky, tlačítka, čísla) a `@fontsource-variable/montserrat` (text). Písma jsou odhad ze screenshotů, čeká na potvrzení uživatele
+- **Stack:** Next.js (App Router) 16.3.7 (Turbopack), React 19.2.8, TypeScript, Tailwind CSS v4, Motion, Drizzle ORM, `@neondatabase/serverless`, Zod, Stripe, Resend a React Email, PostHog (`posthog-js`), Better Auth (návrh, viz otevřené otázky), `simple-icons`, písma `@fontsource-variable/space-grotesk` (nadpisy, popisky, tlačítka, čísla) a `@fontsource-variable/montserrat` (text), potvrzené uživatelem. Motion je nainstalovaný, ale nepoužitý (viz Klíčové technické fakty)
 - **Hosting:** Vercel. **Databáze:** Neon Postgres. **Automatizace:** n8n (mimo tento repozitář)
 - **Příkazy:** `npm run dev`, `npm run build`, `npm run lint`, `node scripts/gen-icons.mjs` (znovu vygeneruje ikony), `npx drizzle-kit generate` a `npx drizzle-kit migrate` (migrace)
 
@@ -45,10 +45,14 @@ Blok `nextjs-agent-rules` nahoře pochází z `create-next-app` a `next dev` ho 
     ├── proxy.ts                 CSP s nonce (v Next.js 16 místo middleware.ts)
     ├── app/                     trasy: /, /prihlaseni, /ucet, /potvrzeni, /dekujeme,
     │                            /podminky, /ochrana-udaju, /disclaimer, /api/*
-    ├── components/              Header, TickerTape, ScrollProgress, Hero, Dashboard, Analyses, Pricing, Faq, SignupForm, BrandMark, Sparkline, CountUp
-    ├── data/                    ukázková data (do zapojení API), icons.generated.ts
+    ├── components/              Header, TickerTape, ScrollProgress, BrandMark (značka webu), SymbolIcon (loga položek),
+    │                            Sparkline, CountUp, WatchlistPicker, AnalysisList, SignupForm, TimeCalculator, Footer, LegalPage
+    │   ├── sections/            sekce prodejní stránky: Hero, HeroBoard, Problem, HowItWorks, Dashboard, Analyses,
+    │   │                        Trust, Audience, Pricing, Faq, ClosingCta
+    │   └── ui/                  Button, Card, ChangeChip, Badge, Segmented, SectionDivider
+    ├── data/                    sample.ts (ukázková data do zapojení API), icons.generated.ts
     ├── db/                      schema.ts (Drizzle), klient Neon
-    └── lib/                     site.ts, format.ts, limity tarifů, podpisy HMAC, Stripe, Resend
+    └── lib/                     site.ts, format.ts, plans.ts (tarify, checkAdd), signup.ts, symbols.ts, dále podpisy HMAC, Stripe, Resend
 ```
 
 ## Klíčové technické fakty
@@ -64,7 +68,11 @@ Blok `nextjs-agent-rules` nahoře pochází z `create-next-app` a `next dev` ho 
 - **Čísla** pocházejí jen z datového API. Jazykový model je nepíše. Položky bez výrazného pohybu dostanou šablonový text bez volání LLM.
 - **Veřejné demo dashboardu** ukazuje jen položky s čerstvými daty (vitrína a sjednocení výběrů). Pro ostatní vrací stav "data budou k dispozici po přidání do výběru".
 - **Ukázková data** jsou deterministická a viditelně označená, dokud není zapojené API.
-- **Ikony:** SVG ze `simple-icons` přes `BrandMark`, jednobarevné v inkoustu (`--ink`) v kroužku s výplní `--paper`. Chybějící ikona se nahradí monogramem. Nikdy nestahuj loga z jiných zdrojů bez rozhodnutí uživatele.
+- **Ikony položek:** SVG ze `simple-icons` přes `SymbolIcon` (ne `BrandMark`, to je značka webu), jednobarevné v inkoustu v kroužku s výplní `--paper`. Cesty generuje `node scripts/gen-icons.mjs` do `src/data/icons.generated.ts`, balíček je jen vývojová závislost. Chybějící ikona a každý index dostanou monogram (nejvýš 3 znaky). Nikdy nestahuj loga z jiných zdrojů bez rozhodnutí uživatele.
+- **Pohyb je jen CSS.** Animace se spouštějí třídami a atributy `data-*` (`data-draw`, `data-open`, `data-selected`), hodnoty za běhu se píšou přes CSSOM. Žádný atribut `style` v JSX: CSP bez `'unsafe-inline'` by ho zablokovalo. Proto se nepoužívá Motion (`initial` vykresluje `style` na serveru). Všechno se vypíná při `prefers-reduced-motion` v jednom bloku v `globals.css`.
+- **Limit výběru** počítá `checkAdd` v `src/lib/plans.ts`. Dashboard ho volá teď, server ve fázi 3 tutéž funkci. Výběr návštěvníka drží `WatchlistPicker` v `localStorage` přes `useSyncExternalStore` (setState v efektu hlásí lint jako chybu).
+- **`POST /api/subscribe`** zatím nic neukládá a na platný požadavek vrací 503 (zadání 5.3). Validace je sdílená funkce `validateSignup` v `src/lib/signup.ts`, na serveru navíc Zod.
+- **Test v Safari na localhostu** nejde přímo: `upgrade-insecure-requests` přepíše http na https. Viz `.claude/security/STATE.md`.
 - **Design tokeny** (barvy, tvary, stíny, písma) jsou v `@theme` v `src/app/globals.css` a přesná čísla v `PROJECT-BRIEF.md`, sekce 2.2 až 2.5. Barvy: `--ink #0C0C0A`, `--cream #F9F3E5`, `--salmon #E4B9A0`, `--mist #CED9DD`, `--sand #EBD69D` (změřeno ze screenshotů). Karty mají 3 px černý okraj a **tvrdý stín bez `blur`**. Barva karty nese význam (mist = index, sand = akcie, salmon = ve výběru).
 - **Velká písmena** (popisky, navigace, tlačítka) se dělají jen přes CSS `text-transform`, v HTML je běžný text.
 - **Písma** jsou balíčky ze `@fontsource-variable`, ne Google Fonts (kvůli CSP a nezávislosti na externích zdrojích). Žádná animovaná pozadí z canvasu ani sítě bodů.

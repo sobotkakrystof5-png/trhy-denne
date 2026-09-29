@@ -1,3 +1,5 @@
+// Escape sekvence schválně: znaky samotné se při úpravách snadno
+// potichu změní na spojovník a obyčejnou mezeru.
 const MINUS = "−"; // skutečné minus, ne spojovník
 const NBSP = " "; // pevná mezera před jednotkou
 
@@ -9,6 +11,10 @@ const percentFormatter = new Intl.NumberFormat("cs-CZ", {
 const priceFormatter = new Intl.NumberFormat("cs-CZ", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
+});
+
+const decimalFormatter = new Intl.NumberFormat("cs-CZ", {
+  maximumFractionDigits: 1,
 });
 
 /**
@@ -30,10 +36,35 @@ export function formatPrice(value: number): string {
   return withRealMinus(priceFormatter.format(value));
 }
 
+/** Cena v dolarech po česku: "412,55 $". */
+export function formatUsd(value: number): string {
+  return `${formatPrice(value)}${NBSP}$`;
+}
+
+/** Číslo s nejvýš jedním desetinným místem: "105" nebo "12,6". */
+export function formatDecimal(value: number): string {
+  return decimalFormatter.format(value);
+}
+
 export type Direction = "up" | "down" | "flat";
 
 export function directionOf(change: number): Direction {
   if (change > 0) return "up";
   if (change < 0) return "down";
   return "flat";
+}
+
+/**
+ * Česká množná čísla: [1, 2 až 4, 5 a víc]. Desetinná čísla berou
+ * tvar pro 2 až 4 ("12,6 hodiny").
+ */
+export function plural(
+  count: number,
+  forms: readonly [one: string, few: string, many: string],
+): string {
+  if (!Number.isInteger(count)) return forms[1];
+  const abs = Math.abs(count);
+  if (abs === 1) return forms[0];
+  if (abs >= 2 && abs <= 4) return forms[1];
+  return forms[2];
 }

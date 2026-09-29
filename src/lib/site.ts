@@ -23,4 +23,17 @@ export const navItems = [
 export const ctaAnchor = "objednat";
 export const ctaLabel = "Odebírat";
 
+/**
+ * Odkazy na kotvy vedou přes "/", aby fungovaly i z právních stránek.
+ * Na hlavní stránce jde o posun v rámci dokumentu, ne o nové načtení.
+ */
+export const anchorHref = (id: string) => `/#${id}`;
+
+/** Právní stránky. Texty dodá právník, do té doby jsou prázdné. */
+export const legalPages = [
+  { href: "/podminky", label: "Obchodní podmínky" },
+  { href: "/ochrana-udaju", label: "Ochrana osobních údajů" },
+  { href: "/disclaimer", label: "Upozornění k obsahu" },
+] as const;
+
 export type NavItem = (typeof navItems)[number];

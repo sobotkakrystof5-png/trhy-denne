@@ -145,6 +145,44 @@
     color: var(--color-mute);
   }
 
+  /* Škála z PROJECT-BRIEF.md 2.3. */
+  .h2 {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 4.4vw, 3.5rem);
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: var(--color-ink);
+  }
+
+  .h3 {
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    color: var(--color-ink);
+  }
+
+  .lead {
+    font-size: 1.25rem;
+    line-height: 1.55;
+  }
+
+  /* Svislé odsazení sekcí. Záměrně ve třech velikostech, aby rytmus
+     stránky nebyl všude stejný (zadání 2.4 a 4). */
+  .section-y {
+    padding-block: clamp(4rem, 10vw, 8rem);
+  }
+
+  .section-y-tight {
+    padding-block: clamp(3rem, 7vw, 5.5rem);
+  }
+
+  .section-y-loose {
+    padding-block: clamp(5rem, 12vw, 9.5rem);
+  }
+
   .nav-caps {
     font-family: var(--font-display);
     font-size: 0.875rem;
@@ -220,5 +258,284 @@
       overflow-x: auto;
       scrollbar-width: none;
     }
+  }
+}
+
+@layer components {
+  /* Zvýrazněná fráze. Rámeček je pseudo-prvek, takže se může "vykreslit"
+     zleva, zatímco text je čitelný od začátku. Na stránce jen jednou. */
+  .highlight {
+    position: relative;
+    z-index: 0;
+    display: inline-block;
+    padding-inline: 0.18em;
+  }
+
+  .highlight::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background-color: var(--color-salmon);
+    border: 3px solid var(--color-ink);
+    box-shadow: 5px 5px 0 rgb(12 12 10 / 0.28);
+    transform-origin: left center;
+  }
+
+  /* Dlaždice dashboardu. Klikací plocha je tlačítko přes celou kartu,
+     mechanika se proto řídí z karty přes :has(). */
+  .tile {
+    box-shadow: var(--shadow-hard-md);
+    transition:
+      transform 120ms ease-out,
+      box-shadow 120ms ease-out,
+      background-color 160ms ease-out;
+  }
+
+  .tile:has(> .tile-hit:hover) {
+    transform: translate(-2px, -2px);
+    box-shadow: 8px 8px 0 var(--color-ink);
+  }
+
+  .tile:has(> .tile-hit:active) {
+    transform: translate(4px, 4px);
+    box-shadow: 2px 2px 0 var(--color-ink);
+  }
+
+  /* Vybraná dlaždice zůstane napůl "zapadlá". Je to stav, ne ozdoba. */
+  .tile[data-selected] {
+    transform: translate(3px, 3px);
+    box-shadow: 3px 3px 0 var(--color-ink);
+  }
+
+  .tile[data-selected]:has(> .tile-hit:hover) {
+    transform: translate(1px, 1px);
+    box-shadow: 5px 5px 0 var(--color-ink);
+  }
+
+  @media (max-width: 767px) {
+    .tile:has(> .tile-hit:hover) {
+      box-shadow: 6px 6px 0 var(--color-ink);
+    }
+  }
+
+  /* Karta FAQ se chová jako tlačítko, když na ni míří kurzor. */
+  .faq-card {
+    box-shadow: 4px 4px 0 var(--color-ink);
+    transition:
+      transform 120ms ease-out,
+      box-shadow 120ms ease-out;
+  }
+
+  .faq-card:has(> summary:hover) {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 var(--color-ink);
+  }
+
+  .faq-card:has(> summary:active) {
+    transform: translate(4px, 4px);
+    box-shadow: none;
+  }
+
+  .faq-card > summary {
+    list-style: none;
+  }
+
+  .faq-card > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tile,
+    .faq-card {
+      transition: none;
+    }
+
+    .tile:has(> .tile-hit:hover),
+    .tile:has(> .tile-hit:active),
+    .faq-card:has(> summary:hover),
+    .faq-card:has(> summary:active) {
+      transform: none;
+    }
+
+    .tile[data-selected],
+    .tile[data-selected]:has(> .tile-hit:hover) {
+      transform: translate(3px, 3px);
+    }
+  }
+
+  /* Rozbalení řádku analýzy. Mřížka z 0fr na 1fr jde animovat bez měření
+     výšky v JavaScriptu. visibility skryje zavřený obsah i čtečkám. */
+  .expander {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .expander > div {
+    min-height: 0;
+    overflow: hidden;
+    visibility: hidden;
+    transition: visibility 0s linear 280ms;
+  }
+
+  .expander[data-open] {
+    grid-template-rows: 1fr;
+  }
+
+  .expander[data-open] > div {
+    visibility: visible;
+    transition-delay: 0s;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .expander,
+    .expander > div {
+      transition: none;
+    }
+  }
+
+  /* Jezdec kalkulačky. Nativní input range kvůli klávesnici a čtečkám,
+     jen přestylovaný na tokeny. */
+  .range {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 32px;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .range::-webkit-slider-runnable-track {
+    height: 14px;
+    background-color: var(--color-paper);
+    border: 2px solid var(--color-ink);
+    border-radius: 7px;
+  }
+
+  .range::-moz-range-track {
+    height: 10px;
+    background-color: var(--color-paper);
+    border: 2px solid var(--color-ink);
+    border-radius: 7px;
+  }
+
+  .range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 28px;
+    height: 28px;
+    margin-top: -9px;
+    background-color: var(--color-salmon);
+    border: 3px solid var(--color-ink);
+    border-radius: 4px;
+    box-shadow: 3px 3px 0 var(--color-ink);
+  }
+
+  .range::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    background-color: var(--color-salmon);
+    border: 3px solid var(--color-ink);
+    border-radius: 4px;
+    box-shadow: 3px 3px 0 var(--color-ink);
+  }
+
+  /* Past na roboty. Člověk ji nevidí a nedostane se do ní tabulátorem. */
+  .honeypot {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+}
+
+/* Pohyb. Všechno je v jednom bloku, aby bylo vidět, že ho vypne
+   prefers-reduced-motion celý. Bez JavaScriptu hero doběhne, protože
+   je čistě v CSS. Křivky mimo hero čeká JavaScript (data-draw). */
+@media (prefers-reduced-motion: no-preference) {
+  .hero-line > span {
+    display: block;
+    animation: line-up 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  .hero-line + .hero-line > span {
+    animation-delay: 120ms;
+  }
+
+  .hero-highlight::before {
+    animation: frame-draw 600ms cubic-bezier(0.3, 0.7, 0.2, 1) 650ms both;
+  }
+
+  .hero-row {
+    animation: row-print 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  .hero-row:nth-child(1) { animation-delay: 1000ms; }
+  .hero-row:nth-child(2) { animation-delay: 1090ms; }
+  .hero-row:nth-child(3) { animation-delay: 1180ms; }
+  .hero-row:nth-child(4) { animation-delay: 1270ms; }
+  .hero-row:nth-child(5) { animation-delay: 1360ms; }
+
+  .hero-row .spark-draw {
+    animation: spark-draw 900ms cubic-bezier(0.3, 0.7, 0.3, 1) both;
+  }
+
+  .hero-row:nth-child(1) .spark-draw { animation-delay: 1150ms; }
+  .hero-row:nth-child(2) .spark-draw { animation-delay: 1240ms; }
+  .hero-row:nth-child(3) .spark-draw { animation-delay: 1330ms; }
+  .hero-row:nth-child(4) .spark-draw { animation-delay: 1420ms; }
+  .hero-row:nth-child(5) .spark-draw { animation-delay: 1510ms; }
+
+  [data-draw="armed"] .spark-draw {
+    clip-path: inset(-12px 100% -12px -12px);
+  }
+
+  [data-draw="run"] .spark-draw,
+  .expander[data-open] .spark-draw {
+    animation: spark-draw 1100ms cubic-bezier(0.3, 0.7, 0.3, 1) both;
+  }
+}
+
+@keyframes line-up {
+  from {
+    transform: translateY(105%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes frame-draw {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes row-print {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* Záporný inset nechá vyčnívat koncový bod, který leží na okraji grafu. */
+@keyframes spark-draw {
+  from {
+    clip-path: inset(-12px 100% -12px -12px);
+  }
+  to {
+    clip-path: inset(-12px -12px -12px -12px);
+  }
+}
+
+@media print {
+  [data-draw] .spark-draw {
+    clip-path: none;
   }
 }

@@ -4,11 +4,11 @@ Co se skutečně stalo, jaký je stav a proč. Pravidla formátu: `pravidla.md`.
 
 ## Aktuální stav
 - **Projekt:** Trhy denně (pracovní název), placený newsletter o amerických akciích a indexech s vlastním výběrem položek podle tarifu.
-- **Fáze:** Fáze 1 (kostra a zabezpečení) hotová, čeká se na zastávku. Sekce prodejní stránky staví fáze 2.
-- **Stack (nainstalováno):** Next.js 16.3.7 (App Router, Turbopack), React 19.2.8, TypeScript 5, Tailwind CSS v4, ESLint 9. Dále Motion a písma `@fontsource-variable/space-grotesk` a `montserrat`. Zatím **nenainstalováno**: Drizzle, `@neondatabase/serverless`, Zod, Stripe, Resend, PostHog, Better Auth, `simple-icons`, písma Fontsource.
-- **Vzhled:** neo-brutalistický papírový styl podle cr-8.cz (od 2026-09-29). Reference v `reference/`. Stojí tokeny, obě písma, mřížka, horní pruh, hlavička se scrollspy a mobilním menu, kurzovní pás a základní komponenty. `/` je zatím přehled hotových dílů, ne prodejní stránka.
-- **Co existuje:** dokumenty a kostra webu. Kurzovní pás běží na **ukázkových datech** ze `src/data/sample.ts` a web to říká nahlas štítkem v pásu.
-- **Git:** vlastní repozitář v `Desktop/SHARES.cz`, větev `main`, první commit `6a87d61`. Žádný vzdálený repozitář zatím není.
+- **Fáze:** Fáze 2 (prodejní stránka s ukázkovými daty) schválená uživatelem 2026-09-29. Další je fáze 3 (databáze, odběr, přihlášení). Otázky ze zastávky fáze 2 zůstávají v Otevřených otázkách, uživatel na ně zatím neodpověděl.
+- **Stack (nainstalováno):** Next.js 16.3.7 (App Router, Turbopack), React 19.2.8, TypeScript 5, Tailwind CSS v4, ESLint 9. Dále písma `@fontsource-variable/space-grotesk` a `montserrat`, Zod a `simple-icons` (jen vývojová). Motion je nainstalovaný, ale nepoužitý. Zatím **nenainstalováno**: Drizzle, `@neondatabase/serverless`, Stripe, Resend, PostHog, Better Auth.
+- **Vzhled:** neo-brutalistický papírový styl podle cr-8.cz (od 2026-09-29). Reference v `reference/`. Stojí tokeny, obě písma, mřížka, horní pruh, hlavička se scrollspy a mobilním menu, kurzovní pás a všechny sekce prodejní stránky na `/`. Právní stránky `/podminky`, `/ochrana-udaju`, `/disclaimer` jsou prázdné s upozorněním.
+- **Co existuje:** prodejní stránka se všemi sekcemi ze zadání 4, dashboard s výběrem v `localStorage`, analýzy, formuláře a trasa `POST /api/subscribe`, která zatím nic neukládá a vrací 503. Všechna čísla jsou **ukázková data** ze `src/data/sample.ts` a web to říká v pásu, v tabuli, v dashboardu, v analýzách i v patičce.
+- **Git:** vlastní repozitář v `Desktop/SHARES.cz`, větev `main`, fáze 1 v commitu `14a9e15`, fáze 2 v commitu hned po něm (viz `git log`). Žádný vzdálený repozitář zatím není.
 
 ## Klíčová rozhodnutí
 Nebudou se znovu otevírat bez výslovného pokynu uživatele.
@@ -29,6 +29,8 @@ Nebudou se znovu otevírat bez výslovného pokynu uživatele.
 - **2026-09-29:** Do rozhodnutí o značce se používá pracovní název **Trhy denně**, držený jedinou proměnnou v `src/lib/site.ts`, a textový znak místo loga. Důvod: pokyn uživatele, aby se pozdější přejmenování dalo udělat na jednom místě.
 
 - **2026-09-29:** `style-src` je bez `'unsafe-inline'`, i když s ním zadání počítalo. Ověřeno v prohlížeči: kostra nemá jediný inline styl a CSP nic nehlásí. Hodnoty počítané za běhu se nastavují přes CSSOM. Důvod: politika se zeslabuje jen tehdy, když to opravdu nejde jinak.
+- **2026-09-29:** Pohyb stránky dělá jen CSS (třídy a atributy `data-*`), ne Motion. Důvod: `initial` z Motion vykreslí na serveru atribut `style`, který přísné CSP zablokuje, a politika se kvůli animacím nezeslabuje. Viz `.claude/security/DECISIONS.md`.
+- **2026-09-29:** Loga položek kreslí `SymbolIcon`, `BrandMark` zůstává značkou webu. Důvod: zadání 2.5 používalo stejný název pro dvě různé věci.
 - **2026-09-29:** `security.txt` se zatím **nenasazuje**. Leží jako šablona v `.claude/security/security.txt.template`. Důvod: kontakt není rozhodnutý a zástupná adresa v `security.txt` slibuje cestu hlášení, která nikam nevede.
 
 ## Otevřené otázky
@@ -48,6 +50,11 @@ Nebudou se znovu otevírat bez výslovného pokynu uživatele.
 - Knihovna přihlášení (návrh Better Auth, ověřit aktuální stav).
 - Reference ben.ai a chase.ai: ben.ai se načetlo jen jako text (osobní web s videem), chase.ai blokuje automatický přístup. Uživatel dodá screenshoty a řekne, co z nich chce.
 - Logo (kroužek z cr-8 se nekopíruje). Do rozhodnutí je značka jen textový znak v `BrandMark`.
+- **Potvrdit řešení rozporů ze zadání (fáze 2):** (1) vysvětlení příčin je ve Start i Plus podle Klíčového rozhodnutí, ne jen v Plus podle tabulky 1.1, a ceník i FAQ to tak říkají. (2) Klik na dlaždici přidává do výběru, analýzu otevírá šipka v rohu. Pokud platí, opravit tabulku 1.1 v zadání.
+- **Hero "Trh za tři minuty. Ne za hodinu." a 3 minuty v kalkulačce.** Zadání chce tvrzení ověřit proti skutečné délce reportu. Report zatím neexistuje, text je převzatý z návrhu zadání.
+- **SpaceX s tickerem SPCX.** Převzato ze zadání. Nepodařilo se ověřit, že akcie pod tímto tickerem obchoduje.
+- **Motion:** odinstalovat, nebo nechat pro pozdější použití mimo server (například v `/ucet`)? Teď je nepoužitý.
+- **Čas doručení ranního reportu.** FAQ říká "oznámíme před spuštěním". Souvisí s otázkou út až so, nebo po až pá.
 
 ## Záměrně nedělám
 Aby to další relace neopravila jako chybu.
@@ -62,9 +69,81 @@ Aby to další relace neopravila jako chybu.
 - **Evropské trhy.** Vyžadují jiné časy, kalendář a data.
 - **Živé ceny na veřejném webu.** Vyžadují dražší licenci. Vitrína ukazuje data po uzavření burzy.
 - **Právní texty.** Nepíše je Claude, jen prázdné stránky s upozorněním.
+- **Tmavý režim.** Styl napodobuje papír a zadání jiný než světlý nezná. Skill `design-taste-frontend` by ho chtěl, zadání má přednost.
+- **Popisek nad nadpisem hera.** Opakoval doslova popisek v hlavičce. Odebráno při sebekritice, hero vystačí s nadpisem a odstavcem.
+- **Druhý předěl s kosočtvercem** (mezi analýzami a černým pruhem). Černý pruh je předěl sám o sobě. Zadání ho v pořadí sekcí uvádí, vědomě vynecháno.
+- **Dopočítání čísel na všech dlaždicích.** Jen na hlavní dlaždici indexu. Dvacet počítadel najednou by byl šum.
+- **Omezení počtu požadavků na `POST /api/subscribe`.** Trasa nic neukládá. Přijde ve fázi 3 s databází.
+- **Popisek vedle loga pod 1280 px.** Na 1024 px se s navigací nevešel na řádek a stránka přetékala.
 
 ## Seznam změn
 Nejnovější nahoře.
+
+### 2026-09-29: Zastávka fáze 2 schválena
+- **Co:** Uživatel schválil fázi 2 a požádal o commit. Na pět otázek ze zastávky (vysvětlení ve Startu, klik na dlaždici, tvrzení o třech minutách, ticker SPCX, odinstalace Motion) výslovně neodpověděl, proto zůstávají v Otevřených otázkách a tabulka 1.1 v zadání se zatím neopravuje.
+- **Proč:** na pokyn uživatele.
+- **Dopad:** Odblokovává fázi 3.
+- **Soubory:** `memory/memory.md`, `memory/index.md`
+
+### 2026-09-29: Kontrola fáze 2 a opravy
+- **Co:** Stránka prošla v Chrome na sedmi šířkách (360 až 1440 px) a ve WebKitu, s omezeným pohybem, klávesnicí a Lighthouse (mobil 93/100/100, počítač 100/100/100, SEO 60 kvůli `noindex`). Opraveno podle měření: nadpis hera se lámal na tři řádky (menší škála, nejvýš 5 rem), šipka k analýze překrývala názvy v dlaždicích (jen čtverec se šipkou, na mobilu název pod ikonou), monogramy o čtyřech písmenech byly nečitelné (nejvýš tři znaky), pole e-mailu v závěrečném formuláři bylo zmáčknuté (`flex-1` ve sloupci), tlačítko Free v ceníku se lámalo (popisek "Začít zdarma" ze zadání, čtyři sloupce až od 1280 px), řádky analýz měly přístupný název slepený bez mezer a pak neodpovídaly viditelnému textu (WCAG 2.5.3), v závěrečném formuláři byl souhlas až za tlačítkem, hlavička z fáze 1 přetékala na 1024 px o 6 px. Texty prošly skillem `humanize-text-cs`: odstraněna trojí skoro stejná věta o doporučeních, trojice v úvodu analýz, opakování "nedělním přehledem" a dvakrát "navíc".
+- **Proč:** kroky 12 a 13 fáze 2.
+- **Dopad:** `.claude/security/STATE.md` měl z fáze 1 chybný řádek o nasazeném zástupném `security.txt`, opraveno. Safari nejde lokálně testovat přímo kvůli `upgrade-insecure-requests` (zapsáno do STATE a `AGENTS.md`).
+- **Soubory:** `src/components/`, `src/app/`, `.claude/security/`, `AGENTS.md`
+
+### 2026-09-29: Fáze 2, prodejní stránka s ukázkovými daty
+- **Co:** Postaveny všechny sekce ze zadání 4: hero, problém s kalkulačkou, jak to funguje, dashboard, analýzy, důvěra, pro koho, ceník se subgridem, FAQ, závěrečná výzva a patička. Dashboard (`WatchlistPicker`) má vyhledávání v ukázkovém katalogu, přepínač Start/Plus/Pro, počítadlo míst, hlídání limitu přes `checkAdd` s nabídkou vyššího tarifu a označení přebytku po snížení tarifu. Výběr žije v `localStorage`. Analýzy (`AnalysisList`) řadí podle velikosti pohybu, ukazují 8 řádků, rozbalují panel s popisem, čísly a křivkou a u pohybu nad 3 % zamčený blok. Formulář odběru (hero a závěr s tarifem) validuje na klientu i serveru a posílá na `POST /api/subscribe`, která zatím vrací 503. Ukázková data rozšířena na vitrínu 20 položek s deterministickými 30denními křivkami a katalog 30 položek bez dat. Ikony firem generuje `scripts/gen-icons.mjs` (11 log, 7 monogramů, přesně podle zadání 2.7). Prázdné právní stránky. Odkazy v hlavičce vedou přes `/#…`, aby fungovaly i z právních stránek.
+- **Proč:** kroky 9 až 11 fáze 2 zadání.
+- **Dopad:** Pohyb bez Motion (Klíčová rozhodnutí). Práh výrazného pohybu 3 % je návrh ze zadání a web ho nikde číslem neslibuje. Popis indexů přiznává, že jde o fondy SPY a QQQ, ne o hodnotu indexu (otevřená otázka 3). Formuláře zatím nic neukládají a web to po odeslání říká.
+- **Soubory:** `src/app/page.tsx`, `src/app/api/subscribe/route.ts`, `src/app/podminky/`, `src/app/ochrana-udaju/`, `src/app/disclaimer/`, `src/app/globals.css`, `src/components/sections/`, `src/components/` (WatchlistPicker, AnalysisList, SignupForm, TimeCalculator, SymbolIcon, Sparkline, CountUp, useDrawOnView, Footer, LegalPage, Header, TickerTape), `src/components/ui/` (ChangeChip, Segmented), `src/lib/` (plans, signup, symbols, format, site), `src/data/sample.ts`, `src/data/icons.generated.ts`, `scripts/gen-icons.mjs`, `package.json`
+
+### 2026-09-29: Návrh a kritika prodejní stránky (fáze 2, povinný krok 2.1)
+- **Co:** Zapsán návrh rozvržení všech sekcí prodejní stránky, jeho kritika a rozpory v zadání, které stavba musí nějak vyřešit. Doinstalovány plánované závislosti `zod` a `simple-icons` (jen pro generovací skript, CC0).
+- **Proč:** sekce 2.1 zadání chce návrh a kritiku zapsané před psaním UI.
+- **Dopad:** řídí stavbu fáze 2. Rozpory níže jsou vratné textové a interakční volby, proto se staví podle navrženého řešení a uživatel je potvrdí na zastávce.
+- **Soubory:** `memory/memory.md`, `package.json`, `package-lock.json`
+
+**Čtení zadání (skill `design-taste-frontend`, bod 0.B):** prodejní stránka placeného newsletteru pro české drobné investory, neo-brutalistický papírový jazyk, nativní CSS a Tailwind v4 bez knihovny komponent. Číselníky skillu: variabilita 7, pohyb 4 (vzácný a zdůvodněný), hustota 5 (dashboard nese data). Tmavý režim se nedělá, styl napodobuje papír a zadání jiný než světlý nezná.
+
+**Návrh: kompozice po sekcích (každá sekce jiná rodina rozvržení)**
+
+```
+HERO 7/5          | label, H1 2 řádky (2. v lososovém rámu), odstavec, formulář | tabule v rámu, 5 řádků, přesah vpravo
+PROBLÉM 5/7       | nadpis a odstavec vlevo | karta paper s jezdcem a velkým číslem, posunutá dolů o jeden řádek mřížky
+JAK 3 karty       | mist, salmon, sand, čísla 01 až 03 v kroužku, mikro-ilustrace z tvarů, tečkovaná spojnice
+  ◇ předěl
+DASHBOARD bento   | ovládací lišta (hledání, přepínač tarifu, počítadlo míst, můj výběr) | S&P 500 6×2 + 4 dlaždice 3×1 + zbytek po čtyřech
+ANALÝZY seznam    | jedna velká karta paper, řádky podle velikosti pohybu, 8 viditelných, tlačítko na zbytek
+  ◇ předěl
+DŮVĚRA ink pruh   | nadpis vlevo | seznam definic vpravo, oddělený krémovými linkami
+PRO KOHO 2 karty  | mist vyšší vlevo, paper nižší vpravo a posunutá dolů
+CENÍK 4 sloupce   | subgrid 7 řádků, Plus lososový a o 12 px výš
+FAQ               | nadpis vlevo přilepený, otázky vpravo jako karty details
+OBJEDNAT salmon   | karta paper uprostřed, přepínač Free/Start/Plus, e-mail, souhlas
+PATIČKA ink
+```
+
+Mobil: vše do jednoho sloupce, bento na dva sloupce s indexem přes celou šířku, ceník pod sebou s popiskem u každé hodnoty.
+
+**Pohyb (každý má důvod):** vstup hera je jediná orchestrovaná sekvence (řádky nadpisu, rámeček, řádky tabule a jejich křivky). Křivky v dashboardu se nakreslí při prvním vstupu do obrazovky, v analýzách při rozbalení. Dopočítání čísla jen na hlavní dlaždici indexu. Dlaždice po přidání "zapadne" a zlososoví. Vše vypnuté při `prefers-reduced-motion`.
+
+**Kritika návrhu (co vypadalo jako šablona nebo kopie a co s tím)**
+
+| Podezřelé | Riziko | Co s tím |
+| --- | --- | --- |
+| Tabule v hero | skill ji řadí mezi nejčastější znaky AI webu (falešný screenshot z divů) | Není to obrázek UI, ale skutečné komponenty dashboardu (stejný štítek změny, křivka, ikona, stejná data) a nese štítek ukázkových dat. |
+| Řada tří karet | klasický "feature row" | Zadání ji povoluje jen tady. Kroky jsou skutečná posloupnost, spojuje je tečkovaná linka, ilustrace jsou z tvarů, ne ze sady ikon. |
+| Bento dlaždice | krém na krému s textem | Barva nese druh položky (mist index, sand akcie, salmon ve výběru), takže rozdíl dlaždic je informace, ne dekorace. Počet buněk sedí na obsah (poslední řada se roztáhne, žádná prázdná buňka). |
+| Velké číslo v kalkulačce | vymyšlená přesnost | Číslo počítá čtenář jezdcem a předpoklady (252 dní, 3 minuty) stojí pod ním. |
+| Ceník se zvýrazněným prostředním tarifem | nejokoukanější vzor SaaS webu | Zadání ho chce. Vyvažuje ho subgrid, který z karet dělá skutečnou srovnávací tabulku, a poctivé "Připravujeme" u Pro. |
+| Popisky velkými písmeny nad sekcemi | skill povoluje nejvýš jeden na tři sekce | Jediný nad nadpisem je v hero. Ostatní popisky nesou data (stav, kategorie, ukázková data). |
+| Lososová barva | zadání fáze 2 ji rozšiřuje (výběr, Plus, závěrečný pruh, ručka jezdce, konec křivky) | Pořád vzácná plocha. Na kartách sekcí se nepoužívá, kromě kroku 02 v "Jak to funguje", kde to zadání výslovně chce. |
+
+**Rozpory v zadání a navržené řešení (potvrdit na zastávce)**
+1. **Vysvětlení příčin ve Start:** tabulka 1.1 ho dává až do Plus, Klíčové rozhodnutí z 2026-09-29 a sekce 4.5 do Start i Plus. Stavím podle Klíčového rozhodnutí, protože je výslovné a novější. Plus pak odlišuje 25 položek, kalendář výsledků a dividend, archiv a odpolední report (připravujeme).
+2. **Klik na dlaždici:** 4.4 říká "přidá do výběru", 4.5 "otevře řádek analýzy". Obojí jedním klikem nejde. Dlaždice přidává, v rohu má samostatný odkaz "Analýza", který otevře řádek a doscrolluje (funguje i bez JavaScriptu jako obyčejná kotva).
+3. **Tlačítko Free v ceníku:** zdánlivý rozpor 4.8 ("Začít zdarma") a 2.9 (stejná akce, stejný název). Nakonec bez rozporu: tlačítko v ceníku nic neodesílá, jen vybere tarif a posune na formulář, takže "Začít zdarma" a "Vybrat tarif" jsou jiné akce než "Odebírat zdarma" ve formuláři. Drží se zadání. "Odebírat zdarma" se v užším sloupci ceníku navíc lámalo na dva řádky.
+4. **Motion:** zadání chce Motion. Jeho `initial` vykreslí na serveru atribut `style`, který přísné CSP bez `'unsafe-inline'` zablokuje. Veškerý pohyb fáze 2 proto dělá CSS a zápis přes CSSOM. Motion zůstává nainstalovaný, ale nepoužitý.
 
 ### 2026-09-29: Fáze 1, kostra a zabezpečení
 - **Co:** Designové tokeny z 2.2 až 2.4 v `@theme` v `globals.css`, obě písma self-hosted přes Fontsource, pozadí s mřížkou 40 px. Komponenty: `SiteHeader` (přilepený celek pruh, hlavička, pás), `Header` se scrollspy přes IntersectionObserver a mobilním panelem, `ScrollProgress`, `TickerTape` s `TickerTrack`, `BrandMark`, `Button`, `Card`, `ChangeChip`, `Badge`, `SectionDivider`. Pomocníci `src/lib/site.ts` a `src/lib/format.ts`. Ukázková data v `src/data/sample.ts`. `src/proxy.ts` s CSP a nonce plus ostatní hlavičky, hlavičky pro `/api` v `next.config.ts`, `poweredByHeader: false`. Složka `.claude/security/` a workflow `.github/workflows/security.yml`. Stránka `/` je zatím přehled hotových dílů.

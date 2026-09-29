@@ -18,7 +18,7 @@ export function TickerTape({ items = sampleTicker }: { items?: TickerItem[] }) {
       <p className="sr-only">
         {SAMPLE_DATA_NOTICE}. Změny za poslední uzavřený obchodní den:{" "}
         {items
-          .map((item) => `${item.symbol} ${formatPercentChange(item.change)}`)
+          .map((item) => `${item.ticker} ${formatPercentChange(item.change)}`)
           .join(", ")}
         .
       </p>
@@ -51,7 +51,7 @@ function TickerChain({ items }: { items: TickerItem[] }) {
   return (
     <div className="flex items-center">
       {items.map((item, index) => (
-        <div key={`${item.symbol}-${index}`} className="flex items-center">
+        <div key={`${item.ticker}-${index}`} className="flex items-center">
           <TickerEntry item={item} />
           <Diamond />
         </div>
@@ -74,7 +74,7 @@ function TickerEntry({ item }: { item: TickerItem }) {
       data-numeric
       className="flex items-center gap-2 whitespace-nowrap px-4 font-display text-sm font-semibold uppercase tracking-[0.08em] leading-none"
     >
-      <span className="text-ink">{item.symbol}</span>
+      <span className="text-ink">{item.ticker}</span>
       <span className={tone}>{formatPercentChange(item.change)}</span>
       {direction !== "flat" ? (
         <span className={tone}>{direction === "up" ? "▲" : "▼"}</span>

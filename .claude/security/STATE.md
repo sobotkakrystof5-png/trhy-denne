@@ -1,7 +1,7 @@
 # STATE: skutečný stav zabezpečení
 
 Co je opravdu nasazené. Nepsat sem plány, ty patří do `DECISIONS.md`.
-Poslední ověření: 2026-09-29, lokálně na `npm run start`, ne na veřejné adrese.
+Poslední ověření: 2026-09-29 (fáze 2), lokálně na `npm run start`, ne na veřejné adrese.
 
 ## Hlavičky odpovědi
 
@@ -49,7 +49,23 @@ jediný inline styl ani `<style>` a v konzoli není žádné porušení CSP.
 Rychlost kurzovního pásu se nastavuje přes CSSOM (`style.setProperty`), což CSP
 neomezuje, ne atributem `style` v HTML, který by nonce nepokryl.
 
+Platí i pro celou prodejní stránku z fáze 2 (ověřeno v Chrome i WebKitu). Veškerý
+pohyb je v CSS třídách a atributech `data-*`, knihovna Motion se nepoužívá, protože
+její `initial` by na serveru vykreslil atribut `style`.
+
+**Pozor při testu v Safari na `http://localhost`:** direktiva `upgrade-insecure-requests`
+přepíše požadavky na https a stránka se nenačte. Chrome localhost vyjímá, WebKit ne.
+Na HTTPS v produkci to nevadí. Lokální test ve WebKitu proto jde přes proxy, která
+odebere jen tuto direktivu. Snímek obrazovky v Playwrightu navíc sám vkládá `<style>`
+(skrytí kurzoru), což WebKit nahlásí jako porušení `style-src-elem`. Nejde o chybu webu.
+
 Žádná cizí doména v CSP zatím není, `CSP-LOG.md` je proto prázdný.
+
+## Trasy API
+
+| Trasa | Ochrana | Stav |
+| --- | --- | --- |
+| `POST /api/subscribe` | kontrola `Origin` (403), jen JSON nebo formulář (415), tělo do 2 kB (413), Zod, past na roboty se stejnou odpovědí jako člověk | nic neukládá, platný požadavek dostane pravdivě 503. Ověřeno curl i z prohlížeče |
 
 ## Tajemství
 
@@ -61,9 +77,11 @@ V repozitáři zatím žádné tajemství není, protože žádná integrace neb
 
 Tohle **není** hotové a nemá se to vydávat za hotové:
 
-- `public/.well-known/security.txt` je **zástupný**. Kontakt je otevřená otázka
-  a před spuštěním se musí vyplnit nebo soubor smazat.
+- `security.txt` **není nasazený**. Šablona leží v `.claude/security/security.txt.template`,
+  kontakt je otevřená otázka. (Opraveno 2026-09-29: dřívější text tu tvrdil, že je
+  zástupný soubor v `public/.well-known/`, ten ale nikdy nevznikl.)
 - DNS (DNSSEC, CAA, SPF, DKIM, DMARC) se neřešilo, doména neexistuje.
-- Žádné omezení počtu požadavků, protože žádná trasa API zatím neexistuje.
-- Validace Zod, podpisy HMAC a webhook Stripe přijdou ve fázích 3 až 5.
+- `POST /api/subscribe` nemá omezení počtu požadavků. Vědomě: nic neukládá ani
+  neposílá. Limit přijde ve fázi 3 spolu s databází a Resendem.
+- Podpisy HMAC a webhook Stripe přijdou ve fázích 4 a 5.
 - Hlavičky nebyly ověřené na veřejné adrese ani na securityheaders.com.

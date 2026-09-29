@@ -18,6 +18,8 @@ počítají za běhu, se musí nastavovat přes CSSOM (`element.style.setPropert
 což CSP neřeší. Tak to dělá `TickerTrack`.
 **Kdy se to přehodnotí:** až se ve fázi 2 nasadí Motion. Pokud si vynutí inline
 styly v značkách, mění se knihovna, ne politika.
+**Výsledek fáze 2:** Motion by si je vynutil (`initial` se vykresluje do atributu
+`style`), takže se podle tohoto pravidla změnila knihovna: pohyb dělá CSS. Viz níže.
 
 ## 2026-09-29: X-XSS-Protection: 0
 **Rozhodnutí:** hlavička se posílá s nulou, tedy vypnuto.
@@ -27,3 +29,20 @@ styly v značkách, mění se knihovna, ne politika.
 **Rozhodnutí:** `max-age=63072000; includeSubDomains`, bez `preload`.
 **Proč:** zápis do preload listu se špatně vrací zpět. Přidá se až po měsíci
 čistého provozu na skutečné doméně.
+
+## 2026-09-29: Pohyb prodejní stránky bez Motion
+**Rozhodnutí:** vstup hera, kreslení křivek, zapadnutí dlaždic i rozbalení řádků
+jsou CSS animace spouštěné třídami a atributy `data-*`. Dopočítání čísla mění text
+v DOM. Nic z toho nepíše atribut `style` do HTML.
+**Proč:** `motion/react` s `initial` vykreslí na serveru `style="opacity:0;…"`, který
+přísné `style-src` bez `'unsafe-inline'` zablokuje. Zeslabit politiku kvůli animacím
+pravidla nedovolují.
+**Cena:** Motion zůstává v `package.json` nepoužitý. Rozhodnutí o odinstalaci je na
+uživateli (Otevřené otázky v `memory/memory.md`).
+
+## 2026-09-29: POST /api/subscribe odpovídá 503, dokud nic neukládá
+**Rozhodnutí:** trasa už teď ověřuje původ, typ a velikost těla a validuje Zodem,
+ale platný požadavek dostane 503 a nic se neuloží.
+**Proč:** zadání 5.3 chce pravdivou odpověď místo falešného úspěchu a formulář musí
+jít skutečně odeslat a vyzkoušet. Omezení počtu požadavků chybí vědomě, dokud trasa
+nic nedělá. Přijde ve fázi 3.
