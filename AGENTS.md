@@ -55,6 +55,7 @@ Blok `nextjs-agent-rules` nahoře pochází z `create-next-app` a `next dev` ho 
 
 - **Struktura webu je závazné rozhodnutí:** jedna prodejní stránka s kotvami `#jak`, `#dashboard`, `#analyzy`, `#cenik`, `#faq`, `#objednat` plus samostatné trasy účtu a právních stránek. Neměnit potichu.
 - **`turbopack.root` v `next.config.ts`** ukazuje napevno na složku projektu. Bez toho si Next.js odvodí kořen z `package-lock.json` v domovské složce uživatele a ohlásí varování. Neodstraňovat.
+- **Přetečení kurzovního pásu** řídí třída `.ticker-viewport` v CSS, ne utilita v JSX. Utilita by přebila pravidlo pro `prefers-reduced-motion` a pás by u těch uživatelů zůstal zamrzlý a nečitelný.
 - **Dynamické vykreslování:** kořenový layout čte `headers()`, aby Next.js přidal nonce z `proxy.ts` ke svým skriptům. Důsledek: bez statické keše stránek. Data se cachují na úrovni dotazu.
 - **Databáze:** HTTP driver Neon na jednoduché dotazy, `Pool` (WebSocket) na transakce. Přidání položky do výběru je vždy transakce se zámkem uživatele (`SELECT … FOR UPDATE`). Schéma je v `PROJECT-BRIEF.md`, sekce 5.2.
 - **Limity tarifů** jsou v tabulce `plan_limits`, ne v kódu. UI a server čtou tentýž zdroj.
@@ -83,7 +84,7 @@ Blok `nextjs-agent-rules` nahoře pochází z `create-next-app` a `next dev` ho 
 Tato sekce je zdroj pravdy. `CLAUDE.md` drží jen krátký blok.
 
 1. **Hlavičky** se vždy nasazují společně: HSTS (`max-age=63072000; includeSubDomains`, bez `preload` do měsíce čistého provozu), CSP, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` (zakázat nepoužívané), COOP `same-origin`, CORP `same-origin`, `X-XSS-Protection: 0`. Odstranit `X-Powered-By`.
-2. **CSP** se staví v `src/proxy.ts` s nonce a `strict-dynamic`. `script-src` nikdy neobsahuje `unsafe-inline` ani `unsafe-eval` (ten jen ve vývoji). Vždy `base-uri`, `object-src 'none'`, `frame-ancestors`, `form-action`. Žádné zástupné znaky. `style-src 'unsafe-inline'` je povolený jen kvůli Motion a je zapsaný v `DECISIONS.md`.
+2. **CSP** se staví v `src/proxy.ts` s nonce a `strict-dynamic`. `script-src` nikdy neobsahuje `unsafe-inline` ani `unsafe-eval` (ten jen ve vývoji). Vždy `base-uri`, `object-src 'none'`, `frame-ancestors`, `form-action`. Žádné zástupné znaky. `style-src` je **bez** `'unsafe-inline'`. Zadání s ním počítalo kvůli Motion, ale ukázalo se, že potřeba není (ověřeno 2026-09-29, viz `DECISIONS.md`). Cena: inline atribut `style` v HTML je zakázaný, hodnoty počítané za běhu se nastavují přes CSSOM (`element.style.setProperty`), což CSP neřeší. Přehodnotit se to smí, až Motion opravdu narazí.
 3. **Každá doména v CSP** má řádek v `.claude/security/CSP-LOG.md` (co ji potřebuje a proč). Očekávané: PostHog (EU) v `connect-src`. Stripe se používá jen přesměrováním na hostovanou stránku.
 4. **Zpřísnění se nikdy neobchází.** Když knihovna žádá `unsafe-inline` nebo `unsafe-eval`, přehodnoť knihovnu, ne politiku.
 5. **Tajemství:** jen na serveru. Do prohlížeče jen `NEXT_PUBLIC_*`. `.gitignore` obsahuje `.env`, `.env.*`, `*.pem`, `*.key`, `.vercel`, `.DS_Store`.

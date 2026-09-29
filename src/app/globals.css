@@ -1,26 +1,224 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Písma jsou self-hosted (Fontsource), ne Google Fonts. Důvod je CSP a
+   nezávislost na externí doméně. Soubory mají unicode-range, takže si
+   prohlížeč stáhne jen latinku a latin-ext, vietnamskou sadu nikdy. */
+@import "@fontsource-variable/space-grotesk";
+@import "@fontsource-variable/montserrat";
+
+@theme {
+  /* --- Barvy. Změřené ze screenshotů cr-8, doplněné pro finanční obsah.
+     Sémantika je závazná: mist = index, sand = akcie, salmon = ve výběru. --- */
+  --color-ink: #0c0c0a;
+  --color-text: #1c1b17;
+  --color-cream: #f9f3e5;
+  --color-cream-grid: #efeadb;
+  --color-salmon: #e4b9a0;
+  --color-mist: #ced9dd;
+  --color-sand: #ebd69d;
+  --color-paper: #fffbf0;
+  --color-mute: #6b665a;
+  --color-rule: #cfc8b6;
+  --color-mint: #bfe3cb;
+  --color-rose: #f0a9a2;
+  --color-gain-ink: #1f7a4d;
+  --color-loss-ink: #b3392e;
+
+  --font-display: "Space Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Montserrat Variable", ui-sans-serif, system-ui, sans-serif;
+
+  --radius-card: 16px;
+  --radius-tile: 12px;
+  --radius-btn: 6px;
+  --radius-cta: 2px;
+  --radius-frame: 28px;
+  --radius-field: 8px;
+
+  /* Tvrdé stíny bez blur. Rozmazaný stín je v tomto projektu chyba. */
+  --shadow-hard-lg: 10px 10px 0 var(--color-ink);
+  --shadow-hard-md: 6px 6px 0 var(--color-ink);
+  --shadow-hard-sm: 3px 3px 0 var(--color-ink);
+  --shadow-btn: 4px 4px 0 rgb(12 12 10 / 0.28);
+  --shadow-btn-hover: 6px 6px 0 rgb(12 12 10 / 0.28);
+
+  --spacing-gutter: 24px;
+  --container-content: 1200px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+/* Na mobilu se stíny zmenšují, jinak by přerostly mezery mezi kartami.
+   @theme umí Tailwind jen v kořeni, takže se hodnoty přepisují na :root.
+   Utility z @theme na tyto proměnné odkazují, takže se přepis projeví. */
+@media (max-width: 767px) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --shadow-hard-lg: 6px 6px 0 var(--color-ink);
+    --shadow-hard-md: 4px 4px 0 var(--color-ink);
+    --shadow-btn: 3px 3px 0 rgb(12 12 10 / 0.28);
+    --shadow-btn-hover: 4px 4px 0 rgb(12 12 10 / 0.28);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  html {
+    /* Kotvy nesmí skončit pod přilepenou hlavičkou a pásem. */
+    scroll-padding-top: 128px;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Plynulý scroll jen pro ty, kdo pohyb neomezili. Lenis se nepoužívá. */
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
+  body {
+    background-color: var(--color-cream);
+    color: var(--color-text);
+    font-family: var(--font-body);
+    font-size: 1.125rem;
+    line-height: 1.65;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    color: var(--color-ink);
+    text-wrap: balance;
+  }
+
+  /* Všechna čísla pod sebou musí mít stejnou šířku číslic. */
+  table,
+  [data-numeric] {
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+
+  /* Fokus je vidět vždy. Na tmavém pozadí lososový, na světlém černý. */
+  :focus-visible {
+    outline: 3px solid var(--color-ink);
+    outline-offset: 3px;
+  }
+
+  .on-ink :focus-visible {
+    outline-color: var(--color-salmon);
+  }
+
+  ::selection {
+    background-color: var(--color-salmon);
+    color: var(--color-ink);
+  }
+}
+
+@layer components {
+  /* Mřížka 40 px. Patří jen na krémové plochy, nikdy na ink ani salmon pruh. */
+  .paper-grid {
+    background-color: var(--color-cream);
+    background-image:
+      linear-gradient(var(--color-cream-grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--color-cream-grid) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .content-width {
+    width: 100%;
+    max-width: var(--container-content);
+    margin-inline: auto;
+    padding-inline: 20px;
+  }
+
+  @media (min-width: 768px) {
+    .content-width {
+      padding-inline: var(--spacing-gutter);
+    }
+  }
+
+  /* Popisek: jediné místo, kde se dělají velká písmena, a to přes CSS.
+     V HTML zůstává běžný text, aby ho čtečka nehláskovala. */
+  .label-caps {
+    font-family: var(--font-display);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    line-height: 1.3;
+    text-transform: uppercase;
+    color: var(--color-mute);
+  }
+
+  .nav-caps {
+    font-family: var(--font-display);
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  /* Mechanika: v klidu stín, hover posun proti stínu, active zapadnutí.
+     Platí pro tlačítka i pro interaktivní karty, aby web sahal jednotně. */
+  .mech {
+    transition:
+      transform 120ms ease-out,
+      box-shadow 120ms ease-out;
+  }
+
+  .mech:hover {
+    transform: translate(-2px, -2px);
+  }
+
+  .mech:active {
+    transform: translate(4px, 4px);
+    box-shadow: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mech,
+    .mech:hover,
+    .mech:active {
+      transition: none;
+      transform: none;
+    }
+  }
+}
+
+@layer components {
+  /* Kurzovní pás. Řetěz je zdvojený, takže posun o -50 % je bezešvý.
+     Rychlost drží --ticker-duration, cílem je zhruba 60 px/s. */
+  .ticker-track {
+    display: flex;
+    width: max-content;
+    animation: ticker-scroll var(--ticker-duration, 40s) linear infinite;
+  }
+
+  /* Zastaví se najetím i fokusem, aby se dala přečíst i klávesnicí. */
+  /* Přetečení patří sem, ne do utility v JSX. Jinak by utilita
+     přebila pravidlo pro omezený pohyb a pás by zůstal zamrzlý. */
+  .ticker-viewport {
+    overflow-x: hidden;
+  }
+
+  .ticker-viewport:hover .ticker-track,
+  .ticker-viewport:focus-within .ticker-track {
+    animation-play-state: paused;
+  }
+
+  @keyframes ticker-scroll {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  /* Kdo omezil pohyb, dostane stojící pás, který jde posouvat prstem. */
+  @media (prefers-reduced-motion: reduce) {
+    .ticker-track {
+      animation: none;
+    }
+
+    .ticker-viewport {
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+  }
 }

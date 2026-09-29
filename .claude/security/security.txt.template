@@ -1,0 +1,13 @@
+# ŠABLONA, ZÁMĚRNĚ NENÍ V public/.well-known/
+#
+# Tenhle soubor se nenasazuje, dokud nebude skutečná schránka, kterou
+# někdo čte. Zástupný kontakt v security.txt je horší než žádný soubor:
+# slibuje cestu hlášení, která nikam nevede.
+#
+# Před spuštěním: doplnit Contact a Expires, uložit do
+# public/.well-known/security.txt a ověřit, že se soubor opravdu servíruje.
+# Expires musí být v budoucnosti, jinak je soubor podle RFC 9116 neplatný.
+
+Contact: mailto:DOPLNIT@DOPLNIT
+Expires: DOPLNIT-DATUM-V-BUDOUCNOSTI
+Preferred-Languages: cs, en

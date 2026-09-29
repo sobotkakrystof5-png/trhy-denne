@@ -3,7 +3,7 @@
 Čti to jako první v každé relaci, před jakoukoli prací. Tento soubor sám nic neobsahuje, jen říká, kde co najdeš a v jakém stavu projekt je.
 
 ## 1. Stav projektu (jedna věta)
-**Fáze:** Fáze 0, kroky 1 až 3 hotové. Next.js projekt je založený a staví, čeká se na zastávku a odpovědi na blokující otázky.
+**Fáze:** Fáze 1 (kostra a zabezpečení) hotová, čeká se na zastávku. Stojí tokeny, hlavička, kurzovní pás a bezpečnostní hlavičky. Další je fáze 2, prodejní stránka.
 Podrobnosti vždy v `memory.md`, sekce Aktuální stav.
 
 ## 2. Systémové soubory
@@ -22,7 +22,7 @@ Podrobnosti vždy v `memory.md`, sekce Aktuální stav.
 Živé zadání uživatele, `CLAUDE.md`, `memory/pravidla.md`, `memory/memory.md`, `AGENTS.md`. Rozpor se nikdy neřeší potichu, vždy se pojmenuje.
 
 ## 4. Mapa projektu
-Cílová struktura je v `AGENTS.md`, sekce Struktura repozitáře. Dnes existuje jen kostra z `create-next-app`: `src/app/` (`layout.tsx`, `page.tsx`, `globals.css`), `public/`, konfigurace v kořeni. Doplňuj sem, jak budou přibývat složky.
+Cílová struktura je v `AGENTS.md`, sekce Struktura repozitáře. Dnes existuje: `src/app/` (`layout.tsx`, `page.tsx`, `globals.css`), `src/proxy.ts`, `src/components/` (+ `ui/`), `src/lib/`, `src/data/`, `.claude/security/`, `.github/workflows/`, `public/`, konfigurace v kořeni. Chybí `src/db/`, `drizzle/` a `scripts/`, ty přijdou ve fázích 3 a 5.
 
 ## 5. Rychlý start relace
 1. Přečti `CLAUDE.md`, `memory/index.md`, `memory/pravidla.md`, `memory/memory.md`, `AGENTS.md`.

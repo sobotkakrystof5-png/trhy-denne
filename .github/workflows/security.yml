@@ -1,0 +1,73 @@
+name: Kontrola zabezpečení
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Zranitelnosti vznikají i bez commitu, proto i týdenní běh.
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  kontrola:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalace
+        run: npm ci
+
+      - name: Známé zranitelnosti
+        run: npm audit --audit-level=high
+
+      - name: Tajemství v repozitáři
+        run: |
+          # Hledá soubory, které do Gitu nepatří. .env.example je výjimka,
+          # protože obsahuje jen názvy proměnných bez hodnot.
+          nalezeno=$(git ls-files | grep -E '(^|/)\.env($|\.)|\.pem$|\.key$' | grep -v '\.env\.example$' || true)
+          if [ -n "$nalezeno" ]; then
+            echo "V repozitáři jsou soubory s tajemstvími:"
+            echo "$nalezeno"
+            exit 1
+          fi
+          echo "Žádný soubor s tajemstvím."
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Hlavičky odpovědi
+        run: |
+          npm run start -- -p 3000 &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:3000/ -o /dev/null && break
+            sleep 1
+          done
+          hlavicky=$(curl -sI http://localhost:3000/)
+          echo "$hlavicky"
+          chybi=0
+          for h in "content-security-policy" "x-content-type-options" \
+                   "x-frame-options" "referrer-policy" \
+                   "cross-origin-opener-policy" "permissions-policy"; do
+            echo "$hlavicky" | grep -qi "^$h:" || { echo "CHYBÍ: $h"; chybi=1; }
+          done
+          # Politika se nesmí zeslabit potichu.
+          if echo "$hlavicky" | grep -qi "script-src[^;]*unsafe-inline"; then
+            echo "CHYBA: script-src obsahuje unsafe-inline"
+            chybi=1
+          fi
+          if echo "$hlavicky" | grep -qi "x-powered-by"; then
+            echo "CHYBA: X-Powered-By se posílá"
+            chybi=1
+          fi
+          exit $chybi

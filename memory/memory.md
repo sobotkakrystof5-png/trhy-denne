@@ -4,11 +4,11 @@ Co se skutečně stalo, jaký je stav a proč. Pravidla formátu: `pravidla.md`.
 
 ## Aktuální stav
 - **Projekt:** Trhy denně (pracovní název), placený newsletter o amerických akciích a indexech s vlastním výběrem položek podle tarifu.
-- **Fáze:** Fáze 0, kroky 1 až 3 hotové, čeká se na zastávku (krok 4). Projekt je založený, `npm run build` i `npm run lint` jsou čisté.
-- **Stack (nainstalováno):** Next.js 16.3.7 (App Router, Turbopack), React 19.2.8, TypeScript 5, Tailwind CSS v4, ESLint 9. Zatím **nenainstalováno**: Motion, Drizzle, `@neondatabase/serverless`, Zod, Stripe, Resend, PostHog, Better Auth, `simple-icons`, písma Fontsource.
-- **Vzhled:** neo-brutalistický papírový styl podle cr-8.cz (od 2026-09-29). Reference v `reference/`. Zatím nic nepostaveno, `/` je výchozí šablona z `create-next-app`.
-- **Co existuje:** dokumenty a holá kostra Next.js. Data na budoucím webu budou zatím **ukázková**.
-- **Git:** projekt **nemá vlastní repozitář**, spadá pod repozitář v domovské složce `/Users/krystofsobotka`. Viz Otevřené otázky.
+- **Fáze:** Fáze 1 (kostra a zabezpečení) hotová, čeká se na zastávku. Sekce prodejní stránky staví fáze 2.
+- **Stack (nainstalováno):** Next.js 16.3.7 (App Router, Turbopack), React 19.2.8, TypeScript 5, Tailwind CSS v4, ESLint 9. Dále Motion a písma `@fontsource-variable/space-grotesk` a `montserrat`. Zatím **nenainstalováno**: Drizzle, `@neondatabase/serverless`, Zod, Stripe, Resend, PostHog, Better Auth, `simple-icons`, písma Fontsource.
+- **Vzhled:** neo-brutalistický papírový styl podle cr-8.cz (od 2026-09-29). Reference v `reference/`. Stojí tokeny, obě písma, mřížka, horní pruh, hlavička se scrollspy a mobilním menu, kurzovní pás a základní komponenty. `/` je zatím přehled hotových dílů, ne prodejní stránka.
+- **Co existuje:** dokumenty a kostra webu. Kurzovní pás běží na **ukázkových datech** ze `src/data/sample.ts` a web to říká nahlas štítkem v pásu.
+- **Git:** vlastní repozitář v `Desktop/SHARES.cz`, větev `main`, první commit `6a87d61`. Žádný vzdálený repozitář zatím není.
 
 ## Klíčová rozhodnutí
 Nebudou se znovu otevírat bez výslovného pokynu uživatele.
@@ -24,10 +24,16 @@ Nebudou se znovu otevírat bez výslovného pokynu uživatele.
 - **2026-09-29:** Směr vzhledu je neo-brutalistický papírový styl podle cr-8.cz: krémové pozadí s mřížkou 40 px, černá hlavička, pastelové karty (mist, sand, salmon) s 3 px černým okrajem a tvrdým stínem, černá tlačítka s velkými písmeny a šipkou, jedna zvýrazněná fráze v lososovém rámečku. Písma Space Grotesk a Montserrat (odhad ze screenshotů). Podpis webu: kurzovní pás, tabule v rámu, křivky v inkoustu, barva nesoucí význam. **Nahrazuje** původní tmavý směr (lahvově zelená, mosaz, Newsreader). Důvod: pokyn uživatele se screenshoty cr-8. Tento směr má podle skillu `design-taste-frontend` přednost před jeho obecným seznamem "výchozích voleb". Sekce 0 zadání byla přepsána, princip "žádná generická šablona ani kopie" zůstává.
 - **2026-09-29:** CSP s nonce přes `proxy.ts`, tedy dynamické vykreslování všech stránek. `style-src 'unsafe-inline'` je povolený kvůli Motion. Důvod: požadavek skillu `web-security-setup` na přísné CSP bez `unsafe-inline` pro skripty. Cena: ztráta statické keše stránek.
 
+- **2026-09-29:** Projekt má vlastní git repozitář v `Desktop/SHARES.cz`, větev `main`. Domovský repozitář v `/Users/krystofsobotka` se nechává být, projekt do něj nepatří. Důvod: Vercel nasazuje z Gitu a kořen v domovské složce míchal dohromady cizí projekty.
+- **2026-09-29:** Písma jsou **Space Grotesk** (nadpisy, popisky, tlačítka, čísla) a **Montserrat** (text), oboje z `@fontsource-variable`. Důvod: uživatel potvrdil odhad ze screenshotů cr-8.
+- **2026-09-29:** Do rozhodnutí o značce se používá pracovní název **Trhy denně**, držený jedinou proměnnou v `src/lib/site.ts`, a textový znak místo loga. Důvod: pokyn uživatele, aby se pozdější přejmenování dalo udělat na jednom místě.
+
+- **2026-09-29:** `style-src` je bez `'unsafe-inline'`, i když s ním zadání počítalo. Ověřeno v prohlížeči: kostra nemá jediný inline styl a CSP nic nehlásí. Hodnoty počítané za běhu se nastavují přes CSSOM. Důvod: politika se zeslabuje jen tehdy, když to opravdu nejde jinak.
+- **2026-09-29:** `security.txt` se zatím **nenasazuje**. Leží jako šablona v `.claude/security/security.txt.template`. Důvod: kontakt není rozhodnutý a zástupná adresa v `security.txt` slibuje cestu hlášení, která nikam nevede.
+
 ## Otevřené otázky
 Čekají na uživatele. Po zodpovězení smazat. Plný seznam s návrhy řešení je v `PROJECT-BRIEF.md`, sekce 13.
-- **Git:** založit v `Desktop/SHARES.cz` vlastní repozitář (potřeba pro nasazení z Gitu na Vercel), nebo řešit jinak. Dnes je kořenem repozitáře domovská složka, která obsahuje i cizí projekty a vlastní `package.json` s `node_modules`.
-- Název značky a doména.
+- Název značky a doména. Do rozhodnutí se používá pracovní název Trhy denně z `src/lib/site.ts`.
 - Které datové API a jaké jsou jeho licenční podmínky pro komerční a veřejné zobrazení.
 - Indexy: ETF jako zástupce (SPY, QQQ), nebo licencovaný index.
 - Rozsah trhů: jen USA, nebo i další.
@@ -38,12 +44,10 @@ Nebudou se znovu otevírat bez výslovného pokynu uživatele.
 - Cookie lišta a režim PostHog.
 - Právní texty a znění souhlasů, DPH a Stripe Tax, forma podnikání, konkurenční doložka.
 - **CSP: nonce, nebo experimentální SRI?** Next.js 16 nabízí `experimental.sri` (hash skriptů při buildu), které zachovává statické stránky a keš na CDN. Rozhodnutí z 2026-09-29 (nonce přes `proxy.ts`) vzniklo bez této možnosti a platí, dokud ho uživatel nezmění. SRI je označené jako experimentální.
-- **`style-src` v produkci.** Dokumentace Next.js doporučuje `style-src 'nonce-...'`. Rozhodnutí z 2026-09-29 povoluje `'unsafe-inline'` kvůli Motion. Ověřit ve fázi 1, jestli to Motion opravdu vyžaduje.
 - Kontakt pro `security.txt`.
 - Knihovna přihlášení (návrh Better Auth, ověřit aktuální stav).
 - Reference ben.ai a chase.ai: ben.ai se načetlo jen jako text (osobní web s videem), chase.ai blokuje automatický přístup. Uživatel dodá screenshoty a řekne, co z nich chce.
-- Přesná písma cr-8 (Space Grotesk a Montserrat jsou odhad).
-- Logo a název značky (kroužek z cr-8 se nekopíruje).
+- Logo (kroužek z cr-8 se nekopíruje). Do rozhodnutí je značka jen textový znak v `BrandMark`.
 
 ## Záměrně nedělám
 Aby to další relace neopravila jako chybu.
@@ -61,6 +65,67 @@ Aby to další relace neopravila jako chybu.
 
 ## Seznam změn
 Nejnovější nahoře.
+
+### 2026-09-29: Fáze 1, kostra a zabezpečení
+- **Co:** Designové tokeny z 2.2 až 2.4 v `@theme` v `globals.css`, obě písma self-hosted přes Fontsource, pozadí s mřížkou 40 px. Komponenty: `SiteHeader` (přilepený celek pruh, hlavička, pás), `Header` se scrollspy přes IntersectionObserver a mobilním panelem, `ScrollProgress`, `TickerTape` s `TickerTrack`, `BrandMark`, `Button`, `Card`, `ChangeChip`, `Badge`, `SectionDivider`. Pomocníci `src/lib/site.ts` a `src/lib/format.ts`. Ukázková data v `src/data/sample.ts`. `src/proxy.ts` s CSP a nonce plus ostatní hlavičky, hlavičky pro `/api` v `next.config.ts`, `poweredByHeader: false`. Složka `.claude/security/` a workflow `.github/workflows/security.yml`. Stránka `/` je zatím přehled hotových dílů.
+- **Proč:** kroky 5 až 7 fáze 1 zadání.
+- **Dopad:** Ruší se potřeba `style-src 'unsafe-inline'`, `AGENTS.md` opraven. `security.txt` se nenasazuje, viz Klíčová rozhodnutí. Sekce prodejní stránky a Motion přijdou ve fázi 2, do té doby není ověřené, jestli si Motion inline styly vynutí.
+- **Soubory:** `src/app/globals.css`, `src/app/layout.tsx`, `src/app/page.tsx`, `src/proxy.ts`, `src/components/`, `src/lib/`, `src/data/sample.ts`, `next.config.ts`, `.claude/security/`, `.github/workflows/security.yml`, `AGENTS.md`
+
+### 2026-09-29: Co našla kontrola fáze 1 a co se opravilo
+- **Co:** Tři chyby nalezené měřením, ne odhadem. (1) Rychlost pásu se nastavovala atributem `style` v HTML, který nonce nepokrývá a přísné `style-src` by ho zablokovalo. Nahrazeno zápisem přes CSSOM v `TickerTrack`, což navíc drží konstantních 60 px/s bez ohledu na počet položek a šířku písma. (2) Utilita `overflow-hidden` v JSX přebíjela pravidlo pro `prefers-reduced-motion`, takže pás u těch uživatelů zamrzl a nešel dočíst. Přetečení se řídí z CSS. (3) Štítek ukázkových dat zabíral na mobilu třetinu šířky, zkrácen na "Ukázka", plné znění zůstává ve skrytém odstavci pro čtečky.
+- **Proč:** kontrola podle kroku 8 fáze 1 a sekce 2.1.
+- **Dopad:** Ověřeno v Chrome na 1440 a 390 px: žádné porušení CSP, čistá konzole, žádný vodorovný přetok, tabulátor projde hlavičku v pořadí a každý prvek má viditelný obrys, pás se zastaví najetím i fokusem, při omezeném pohybu stojí a jde posouvat, mobilní menu se otevře a zavře Escapem. Kontrast: 15 dvojic z designového systému, všechny nad AA, nejnižší `--gain-ink` na krému 4,81.
+- **Soubory:** `src/components/TickerTape.tsx`, `src/components/TickerTrack.tsx`, `src/components/ScrollProgress.tsx`, `src/app/globals.css`, `.claude/security/AUDIT-LOG.md`
+
+### 2026-09-29: Návrh a kritika vzhledu (fáze 1, krok 6, povinný krok 2.1)
+- **Co:** Zapsán návrh rozvržení kostry a jeho kritika, viz níže. Tokeny jsou dané zadáním, návrh řeší rozvržení a principy.
+- **Proč:** sekce 2.1 zadání to vyžaduje před psaním UI.
+- **Dopad:** řídí stavbu ve fázi 1. Odchylky od změřených hodnot se zapíší po porovnání se screenshoty.
+- **Soubory:** `memory/memory.md`
+
+**Návrh: trvalé prvky (to, co staví fáze 1)**
+
+```
+┌──────────────────────────────────────────────────────────┐  6 px salmon, scaleX podle scrollu
+│▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
+├──────────────────────────────────────────────────────────┤
+│ ◯ Trhy denně │ PŘEHLED AKCIÍ V E-MAILU    NAV NAV NAV [CTA]│ 72 px, ink
+├══════════════════════════════════════════════════════════┤  3 px ink
+│[UKÁZKOVÁ DATA] NVDA +1,84 % ▲ ◇ AAPL −0,42 % ▼ ◇ SPY ... │ 44 px, cream
+├══════════════════════════════════════════════════════════┤  3 px ink
+│                                                          │
+│   krémová plocha s mřížkou 40 px                         │
+```
+
+Mobil: hamburger 44 px vpravo, panel ink přes celou šířku pod hlavičkou. Pás zůstává.
+
+**Principy, které si kostra nese dál**
+
+1. Tři vodorovné linky nad sebou (pruh, hlavička, pás) tvoří "hlavu tabule". Pás je součást identity, ne ozdoba, proto má stejné 3px linky jako karty.
+2. Mřížka je jen na krémových plochách. Na ink a salmon pruzích se vypíná.
+3. Pohyb je vždy odvozený z dat nebo z akce uživatele. Pás běží, protože kurzy běží. Pruh roste, protože roste pozice ve stránce.
+4. Barva nese význam. V kostře to znamená: salmon jen na CTA, na horním pruhu a na štítku ukázkových dat. Nikde jinde.
+5. Každá komponenta má tři stavy mechaniky: klid, hover (posun proti stínu), active (zapadnutí do stínu). Bez výjimky, i u karet.
+
+**Kritika návrhu proti zadání (co vypadalo jako výchozí volba nebo jako kopie cr-8 a co jsem s tím udělal)**
+
+| Co bylo podezřelé | Jak to bylo | Co s tím |
+| --- | --- | --- |
+| Logo s kroužkem | cr-8 má kroužek a název. Kroužek je jeho podpis. | Kroužek nekopíruju. `BrandMark` značky je čtverec 32 px se 3px okrajem, uvnitř dvě vodorovné linky různé délky (sloupcový zápis kurzu). Drží papírový jazyk, ale patří finančnímu produktu. |
+| Popisek vedle loga | cr-8 má "AI BACK OFFICE" za svislou čárou. | Formu přebírám (je to jazyk, ne podpis), text je vlastní a pravdivý. Na mobilu se skrývá. |
+| Kurzovní pás jako běžící text | Sám o sobě je to klišé webů z roku 2015 a bývá to dekorace. | Nese skutečná čísla, dá se zastavit najetím i fokusem, při `prefers-reduced-motion` stojí a jde posouvat prstem. Vedle něj je skrytý seznam pro čtečky. Kdyby nenesl data, vyhodím ho. |
+| Horní pruh jako scroll indikátor | Standardní ozdoba, na většině webů nic neříká. | Zadání ho chce a má jeden dobrý důvod: je to jediný trvalý pohyb navázaný na scroll, takže nahrazuje obvyklé animace sekcí, které zadání zakazuje. Ponechávám. |
+| Mřížka na pozadí | Riziko, že bude vypadat jako výchozí "graph paper" šablona. | Necháváme 40 px podle měření a kontrast čar držíme nízký (`#EFEADB` na `#F9F3E5`). Mřížka se nesmí objevit na barevných pruzích, jinak z ní je vzorek. |
+| Segmentové ovladače, štítky a pole z knihovny | shadcn ve výchozím vzhledu je podle zadání chyba. | Základní komponenty píšu ručně na tokeny. shadcn zatím vůbec neinstaluju, ať nevznikne pokušení. |
+
+**Sebekritika (odebrat jednu ozdobu navíc):** návrh měl mezi položkami pásu kosočtverce a zároveň svislé linky jako u cr-8 karet. Svislé linky ruším, zůstává jen kosočtverec. Pás má být čitelný, ne vzorovaný.
+
+### 2026-09-29: Vlastní git repozitář a zodpovězené otázky k fázi 1
+- **Co:** Založen repozitář v `Desktop/SHARES.cz` (`git init -b main`), první commit `6a87d61` se vším z fáze 0. Ověřeno, že domovský repozitář nesledoval ani jeden soubor projektu a že `node_modules` ani nic citlivého není v indexu. Do `.gitignore` doplněn `*.key`. Uživatel potvrdil písma Space Grotesk a Montserrat a pracovní název Trhy denně.
+- **Proč:** na pokyn uživatele. `*.key` chyběl oproti bezpečnostním pravidlům v `AGENTS.md`, bod 5, a nemělo smysl zakládat historii s touto dírou.
+- **Dopad:** Odblokovává fázi 1 (typografie a `site.ts`). Otázky na písma a git smazány z Otevřených otázek, odpovědi přesunuty do Klíčových rozhodnutí. Název značky a logo zůstávají otevřené, jen mají dočasné řešení. Vzdálený repozitář a propojení s Vercelem zatím nejsou.
+- **Soubory:** `.git/`, `.gitignore`, `memory/memory.md`
 
 ### 2026-09-29: Založení Next.js projektu (fáze 0, kroky 2 a 3)
 - **Co:** Kostra vytvořena `create-next-app` 16.3.7 (TypeScript, Tailwind v4, App Router, `src/`, ESLint, alias `@/*`, bez inicializace gitu) v dočasné složce a nakopírována do projektu, aby se nepřepsaly `AGENTS.md`, `CLAUDE.md`, `PROJECT-BRIEF.md`, `memory/` a `reference/`. Vygenerované `AGENTS.md` a `CLAUDE.md` se nepoužily, projektové zůstávají. Název balíčku nastaven na `trhy-denne`. V `next.config.ts` nastaven `turbopack.root` na složku projektu. Přečtena lokální dokumentace `01-app/01-getting-started/16-proxy.md` a `01-app/02-guides/content-security-policy.md`.
