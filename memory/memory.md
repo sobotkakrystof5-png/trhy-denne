@@ -8,7 +8,7 @@ Co se skutečně stalo, jaký je stav a proč. Pravidla formátu: `pravidla.md`.
 - **Stack (nainstalováno):** Next.js 16.3.7 (App Router, Turbopack), React 19.2.8, TypeScript 5, Tailwind CSS v4, ESLint 9. Dále písma `@fontsource-variable/space-grotesk` a `montserrat`, Zod a `simple-icons` (jen vývojová). Motion je nainstalovaný, ale nepoužitý. Od fáze 3 navíc Drizzle ORM 0.45, `drizzle-kit`, `@neondatabase/serverless` 1.1, Better Auth 1.7.6, Resend 6, React Email, `server-only`, `pg` (jen vývojová). Od fáze 4 navíc `stripe` 22.6.2 (SDK má zabudovanou verzi API `2026-08-26.dahlia`). Zatím **nenainstalováno**: PostHog.
 - **Vzhled:** neo-brutalistický papírový styl podle cr-8.cz (od 2026-09-29). Reference v `reference/`. Stojí tokeny, obě písma, mřížka, horní pruh, hlavička se scrollspy a mobilním menu, kurzovní pás a všechny sekce prodejní stránky na `/`. Právní stránky `/podminky`, `/ochrana-udaju`, `/disclaimer` jsou prázdné s upozorněním.
 - **Co existuje:** prodejní stránka se všemi sekcemi ze zadání 4, dashboard s výběrem v `localStorage`, analýzy. Od fáze 3 schéma a migrace, odběr s double opt-in (`/api/subscribe`, `/potvrzeni`, `/api/confirm`, `/dekujeme`), přihlášení odkazem (`/prihlaseni`, `/prihlaseni/overit`), účet `/ucet` s výběrem uloženým v databázi a limitem v transakci, `/api/watchlist`, `/api/symbols/search`. Od fáze 4 platby: Checkout a Customer Portal z karty tarifu v `/ucet`, webhook `POST /api/webhooks/stripe`, logika v `src/lib/billing.ts`. Bez databáze a e-mailu vše pravdivě vrací 503, bez klíčů Stripe totéž pro platby (`paymentsReady()`). Všechna čísla jsou **ukázková data** ze `src/data/sample.ts` a web to říká v pásu, v tabuli, v dashboardu, v analýzách, v účtu i v patičce.
-- **Git:** vlastní repozitář v `Desktop/SHARES.cz`, větev `main`, fáze 1 `14a9e15`, fáze 2 `c89cf34`, fáze 3 v commitu „fáze 3: databáze, odběr a přihlášení“, fáze 4 a krok 22 fáze 5 v commitu „fáze 4: platby a podepsané interní trasy“ (bez schválené zastávky, viz Fáze). Vzdálený repozitář: soukromý `trhy-denne` na GitHubu účtu `sobotkakrystof5-png`, větev `main`.
+- **Git:** vlastní repozitář v `Desktop/SHARES.cz`, větev `main`, fáze 1 `14a9e15`, fáze 2 `c89cf34`, fáze 3 v commitu „fáze 3: databáze, odběr a přihlášení“, fáze 4 a krok 22 fáze 5 v commitu „fáze 4: platby a podepsané interní trasy“ (bez schválené zastávky, viz Fáze). Vzdálený repozitář: soukromý `trhy-denne` na GitHubu účtu `sobotkakrystof5-png`, větev `main`, napojený na Vercel (https://trhy-denne.vercel.app).
 
 ## Klíčová rozhodnutí
 Nebudou se znovu otevírat bez výslovného pokynu uživatele.
@@ -109,6 +109,12 @@ Aby to další relace neopravila jako chybu.
 
 ## Seznam změn
 Nejnovější nahoře.
+
+### 2026-09-30: Nasazení na Vercel
+- **Co:** Vytvořen projekt `trhy-denne` na Vercelu (tým `sobotkakrystof5-pngs-projects`), napojen na GitHub `sobotkakrystof5-png/trhy-denne`. První nasazení (target production) je READY na https://trhy-denne.vercel.app. Další push do `main` nasazuje automaticky.
+- **Proč:** na pokyn uživatele.
+- **Dopad:** **Na Vercelu nejsou nastavené žádné proměnné prostředí**, takže odběr, přihlášení, platby a interní trasy tam vracejí pravdivě 503 (databáze, Resend, Stripe, HMAC). Ověřeno po nasazení: `/`, `/prihlaseni`, `/ucet` vrací 200, hlavičky zabezpečení (CSP s nonce, HSTS, COOP/CORP, X-Frame-Options DENY) jsou na místě, `/api/subscribe` validuje na serveru. **Neověřeno:** skutečné odeslání formuláře, platby (chybí sandbox Stripe), vzhled na mobilu a tabletu po nasazení, konzole prohlížeče. Právní stránky jsou pořád prázdné a web je veřejně dostupný. Proměnné jsem nenastavoval, protože by to vyžadovalo číst `.env.local` s tajemstvími. Pozor: jedna databáze pro vývoj i produkci (viz Otevřené otázky).
+- **Soubory:** `memory/memory.md` (složka `.vercel/` je v `.gitignore`)
 
 ### 2026-09-30: Commit a push na GitHub
 - **Co:** Rozpracované změny fáze 4 (platby, migrace `0003_billing`, `scripts/stripe-setup.mts`) a kroku 22 fáze 5 (interní trasy) commitnuty jedním commitem „fáze 4: platby a podepsané interní trasy“. Založen soukromý repozitář `trhy-denne` a `main` do něj odeslána.
