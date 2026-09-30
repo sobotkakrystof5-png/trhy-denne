@@ -46,6 +46,17 @@ export function formatDecimal(value: number): string {
   return decimalFormatter.format(value);
 }
 
+const dateFormatter = new Intl.DateTimeFormat("cs-CZ", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+
+/** Datum po česku: "14. října 2026". */
+export function formatDate(value: Date): string {
+  return dateFormatter.format(value);
+}
+
 export type Direction = "up" | "down" | "flat";
 
 export function directionOf(change: number): Direction {

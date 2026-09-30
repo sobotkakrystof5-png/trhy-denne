@@ -166,6 +166,7 @@ export function AccountWatchlist({
   tier,
   limits,
   initial,
+  paymentsLive,
 }: {
   /** Vitrína s ukázkovými daty. */
   items: ShowcaseSymbol[];
@@ -175,6 +176,8 @@ export function AccountWatchlist({
   /** Z tabulky plan_limits. */
   limits: Limits;
   initial: AccountEntry[];
+  /** Běží platby? Rozhoduje, jestli upozornění na limit smí nabídnout přechod. */
+  paymentsLive: boolean;
 }) {
   const ids = useId();
   const [query, setQuery] = useState("");
@@ -299,6 +302,7 @@ export function AccountWatchlist({
       pending={pending}
       onToggle={toggle}
       account
+      paymentsLive={paymentsLive}
       tierControl={
         <div className="md:w-[22rem]">
           <p className="mb-2 font-display text-[0.9375rem] font-bold text-ink">Váš tarif</p>
@@ -343,6 +347,7 @@ function PickerView({
   onToggle,
   tierControl,
   account = false,
+  paymentsLive = false,
 }: {
   ids: string;
   query: string;
@@ -364,6 +369,7 @@ function PickerView({
   onToggle: (ticker: string) => void;
   tierControl: ReactNode;
   account?: boolean;
+  paymentsLive?: boolean;
 }) {
   const drawRef = useDrawOnView<HTMLUListElement>();
   const over = selection.length - activeCount;
@@ -456,7 +462,12 @@ function PickerView({
 
           <div aria-live="polite" className="empty:hidden">
             {notice && !notice.ok ? (
-              <LimitNotice tier={tier} check={notice} account={account} />
+              <LimitNotice
+                tier={tier}
+                check={notice}
+                account={account}
+                paymentsLive={paymentsLive}
+              />
             ) : failure ? (
               <p className="mt-4 rounded-[var(--radius-field)] border-3 border-loss-ink bg-paper px-5 py-4 text-[0.9375rem] font-semibold leading-normal text-loss-ink">
                 {failure}
@@ -674,10 +685,12 @@ function LimitNotice({
   tier,
   check,
   account,
+  paymentsLive,
 }: {
   tier: Tier;
   check: Extract<AddCheck, { ok: false }>;
   account: boolean;
+  paymentsLive: boolean;
 }) {
   const current = plans[tier];
   const upgrade = check.upgrade ? plans[check.upgrade] : null;
@@ -700,17 +713,20 @@ function LimitNotice({
         ? `${upgrade.name} jich má ${upgrade.maxWatchlist}.`
         : `${upgrade.name}, který připravujeme, jich bude mít ${upgrade.maxWatchlist}.`;
 
+  // V účtu se dá tarif změnit jen tehdy, když platby opravdu běží.
+  const canUpgradeHere = account && paymentsLive && Boolean(upgrade?.available);
+
   return (
     <div className="mt-4 flex flex-col gap-3 rounded-[var(--radius-field)] border-3 border-ink bg-sand px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
       <p className="text-[0.9375rem] font-semibold leading-normal text-ink">
         {situation} {offer}
-        {account && upgrade ? " Placené tarify zatím nespouštíme." : ""}
+        {account && upgrade && !paymentsLive ? " Placené tarify zatím nespouštíme." : ""}
       </p>
       <Link
-        href="/#cenik"
+        href={canUpgradeHere ? "#tarif" : "/#cenik"}
         className="shrink-0 font-display text-sm font-bold uppercase tracking-[0.08em] text-ink underline underline-offset-4"
       >
-        Porovnat tarify
+        {canUpgradeHere ? "Změnit tarif" : "Porovnat tarify"}
       </Link>
     </div>
   );

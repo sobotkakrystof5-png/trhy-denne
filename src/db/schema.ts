@@ -8,6 +8,9 @@
  * - `users.requested_tier`: web slibuje "poznamenáme si zájem o tarif".
  * - `sessions`, `accounts`, `verifications`: tabulky Better Auth.
  * - `rate_limits`: omezení počtu požadavků bez další služby.
+ * - `users.past_due_since`, `cancel_at_period_end`,
+ *   `digital_content_waiver_version` (fáze 4): lhůta po neúspěšné platbě,
+ *   zrušení ke konci období, verze znění souhlasu.
  *
  * Migrace dělá jen drizzle-kit (npx drizzle-kit generate, migrate).
  */
@@ -57,6 +60,8 @@ export const users = pgTable("users", {
   consentTextVersion: text("consent_text_version"),
   /** Souhlas s okamžitým poskytnutím digitálního obsahu (fáze 4). */
   digitalContentWaiverAt: timestamptz("digital_content_waiver_at"),
+  /** Verze znění souhlasu, stejně jako u consent_text_version. */
+  digitalContentWaiverVersion: text("digital_content_waiver_version"),
   stripeCustomerId: text("stripe_customer_id").unique(),
   tier: text("tier")
     .notNull()
@@ -64,9 +69,16 @@ export const users = pgTable("users", {
     .references(() => planLimits.tier),
   /** Tarif, o který projevil zájem ve formuláři, dokud platby neběží. */
   requestedTier: text("requested_tier").references(() => planLimits.tier),
-  /** active / past_due / canceled */
+  /**
+   * Stav placeného předplatného: active / past_due / canceled. Free odběr
+   * se řídí email_confirmed_at a unsubscribed_at, ne tímto sloupcem.
+   */
   status: text("status").notNull().default("active"),
   currentPeriodEnd: timestamptz("current_period_end"),
+  /** Od kdy je platba po splatnosti. Z něj se počítá 7denní lhůta. */
+  pastDueSince: timestamptz("past_due_since"),
+  /** Předplatné je zrušené ke konci období, do té doby platí. */
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
   unsubscribedAt: timestamptz("unsubscribed_at"),
   createdAt: timestamptz("created_at").notNull().defaultNow(),
   updatedAt: timestamptz("updated_at")

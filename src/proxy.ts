@@ -27,7 +27,10 @@ export function proxy(request: NextRequest) {
     "connect-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
-    "form-action 'self'",
+    // Prohlížeč form-action hlídá i na přesměrování po odeslání formuláře,
+    // takže platba bez JavaScriptu potřebuje cíle Stripe vyjmenované.
+    // Viz .claude/security/CSP-LOG.md.
+    "form-action 'self' https://checkout.stripe.com https://billing.stripe.com",
     "frame-ancestors 'none'",
     "frame-src 'none'",
     "manifest-src 'self'",

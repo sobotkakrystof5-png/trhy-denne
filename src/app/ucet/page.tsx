@@ -8,15 +8,28 @@ import { Button } from "@/components/ui/Button";
 import { db, schema } from "@/db";
 import { showcase } from "@/data/sample";
 import { getSession } from "@/lib/auth";
-import { accountsReady } from "@/lib/env";
-import { isTier, plans } from "@/lib/plans";
+import { accountsReady, paymentsReady } from "@/lib/env";
+import { isTier } from "@/lib/plans";
 import { monogramFor, uiKind } from "@/lib/symbols";
 import { getWatchlist, loadLimits } from "@/lib/watchlist";
 import { confirmFromAccount, signOut } from "./actions";
+import { TierCard, type TierNotice } from "./TierCard";
 
 export const metadata: Metadata = { title: "Účet" };
 
-export default async function AccountPage() {
+const tierNotices = new Set<TierNotice>(["hotovo", "souhlas", "pozdeji"]);
+
+function noticeFrom(value: string | string[] | undefined): TierNotice | null {
+  return typeof value === "string" && tierNotices.has(value as TierNotice)
+    ? (value as TierNotice)
+    : null;
+}
+
+export default async function AccountPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   if (!accountsReady()) {
     return (
       <PageShell>
@@ -31,7 +44,7 @@ export default async function AccountPage() {
   if (!session) redirect("/prihlaseni");
 
   const userId = session.user.id;
-  const [[user], limits, entries] = await Promise.all([
+  const [[user], limits, entries, params] = await Promise.all([
     db()
       .select({
         email: schema.users.email,
@@ -39,11 +52,17 @@ export default async function AccountPage() {
         requestedTier: schema.users.requestedTier,
         confirmedAt: schema.users.emailConfirmedAt,
         unsubscribedAt: schema.users.unsubscribedAt,
+        status: schema.users.status,
+        currentPeriodEnd: schema.users.currentPeriodEnd,
+        pastDueSince: schema.users.pastDueSince,
+        cancelAtPeriodEnd: schema.users.cancelAtPeriodEnd,
+        stripeCustomerId: schema.users.stripeCustomerId,
       })
       .from(schema.users)
       .where(eq(schema.users.id, userId)),
     loadLimits(),
     getWatchlist(userId),
+    searchParams,
   ]);
   if (!user || !isTier(user.tier)) redirect("/prihlaseni");
 
@@ -65,9 +84,10 @@ export default async function AccountPage() {
       }))
     : [];
 
-  const tier = plans[user.tier];
-  const requested = isTier(user.requestedTier) && user.requestedTier !== user.tier ? plans[user.requestedTier] : null;
+  const requested =
+    isTier(user.requestedTier) && user.requestedTier !== user.tier ? user.requestedTier : null;
   const confirmed = Boolean(user.confirmedAt && !user.unsubscribedAt);
+  const paymentsLive = paymentsReady();
 
   return (
     <PageShell>
@@ -85,10 +105,11 @@ export default async function AccountPage() {
         </form>
       </div>
 
-      <dl className="mt-12 grid gap-6 md:grid-cols-2">
+      {/* Karty už nesou tlačítka a formuláře, definiční seznam by je nesměl obsahovat. */}
+      <div className="mt-12 grid gap-6 md:grid-cols-2 md:items-start">
         <div className="rounded-[var(--radius-card)] border-3 border-ink bg-paper p-6 shadow-[var(--shadow-hard-md)] md:p-7">
-          <dt className="font-display text-[0.9375rem] font-bold text-ink">Odběr</dt>
-          <dd className="mt-3">
+          <h2 className="font-display text-[0.9375rem] font-bold text-ink">Odběr</h2>
+          <div className="mt-3">
             {confirmed ? (
               <p className="text-lg leading-relaxed">
                 Potvrzený. Přehledy zatím neposíláme, první dostanete po spuštění webu.
@@ -111,23 +132,23 @@ export default async function AccountPage() {
                 </form>
               </>
             )}
-          </dd>
+          </div>
         </div>
 
-        <div className="rounded-[var(--radius-card)] border-3 border-ink bg-paper p-6 shadow-[var(--shadow-hard-md)] md:p-7">
-          <dt className="font-display text-[0.9375rem] font-bold text-ink">Tarif</dt>
-          <dd className="mt-3">
-            <p className="text-lg leading-relaxed">
-              {tier.name}
-              {tier.priceCzk > 0 ? `, ${tier.priceCzk} Kč měsíčně` : ", zdarma"}.
-              {requested ? ` Máte zájem o ${requested.name}.` : ""}
-            </p>
-            <p className="mt-2 text-[0.9375rem] leading-normal text-mute">
-              Placené tarify zatím nespouštíme. Až je spustíme, přejdete na ně tady.
-            </p>
-          </dd>
-        </div>
-      </dl>
+        <TierCard
+          tier={user.tier}
+          billing={{
+            status: user.status,
+            pastDueSince: user.pastDueSince,
+            currentPeriodEnd: user.currentPeriodEnd,
+            cancelAtPeriodEnd: user.cancelAtPeriodEnd,
+          }}
+          requested={requested}
+          hasCustomer={Boolean(user.stripeCustomerId)}
+          paymentsLive={paymentsLive}
+          notice={noticeFrom(params.platba)}
+        />
+      </div>
 
       <section aria-labelledby="vyber-title" className="mt-16">
         <h2 id="vyber-title" className="h2">
@@ -140,6 +161,7 @@ export default async function AccountPage() {
             tier={user.tier}
             limits={limits}
             initial={entries}
+            paymentsLive={paymentsLive}
           />
         </div>
       </section>

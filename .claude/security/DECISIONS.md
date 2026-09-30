@@ -76,3 +76,38 @@ podmínkou („pokud k adrese patří účet“).
 (Upstash a podobně) by byla nová integrace a nový účet.
 **Cena:** jeden zápis do databáze navíc na každý chráněný požadavek. Při velkém provozu
 přehodnotit, případně doplnit pravidla firewallu Vercelu.
+
+## 2026-09-30: Stripe je ve `form-action`, nikde jinde v CSP
+**Rozhodnutí:** `form-action 'self' https://checkout.stripe.com https://billing.stripe.com`.
+Do `script-src`, `frame-src` ani `connect-src` nepřidáno nic.
+**Proč:** prohlížeče hlídají `form-action` i na přesměrování, které přijde jako odpověď na
+odeslaný formulář, ne jen na první cíl. Se zapnutým JavaScriptem serverovou akci odesílá
+`fetch` a přesměrování provede router, takže by stačilo `'self'`. Bez JavaScriptu jde o
+klasické odeslání formuláře a platba by skončila zablokovaným přesměrováním.
+**Cena:** dvě celé domény v politice, bez zástupných znaků a jen pro cíl odeslání formuláře.
+Nic se nevkládá do stránky. **Neověřeno v prohlížeči**, sandbox Stripe zatím není.
+
+## 2026-09-30: Souhlas s digitálním obsahem je vlastní zaškrtávátko
+**Rozhodnutí:** povinné políčko v kartě tarifu v `/ucet`, ne `consent_collection` ve Checkoutu.
+Čas a verze znění se ukládají ještě před odchodem na platbu.
+**Proč:** Stripe k tomu nabízí jen políčko „terms of service“, které vyžaduje odkaz na podmínky
+nastavený v Dashboardu a míchá souhlas s podmínkami se vzdáním se lhůty na odstoupení. Vlastní
+políčko drží znění i jeho verzi v repozitáři a důkaz souhlasu v naší databázi.
+**Cena:** odchylka od zadání 5.5, čeká na potvrzení uživatelem. Znění musí posoudit právník.
+
+## 2026-09-30: Tarif se čte ze Stripe, ne z těla webhooku
+**Rozhodnutí:** každá událost webhooku si předplatné načte ze Stripe a přepíše podle něj řádek
+uživatele. Neznámé ID ceny tarif nemění, jen se zapíše do logu.
+**Proč:** události mohou dorazit v jiném pořadí, než nastaly. Dopočítávání stavu z těla zprávy
+by při přehozeném pořadí nechalo uživatele na cizím tarifu.
+**Cena:** jedno volání do Stripe na každou událost.
+
+## 2026-09-30: Interní trasy podepisuje HMAC s časovou značkou, oběma směry
+**Rozhodnutí:** `POST /api/internal/render-report` (n8n volá Next.js) i události po platbě (Next.js volá n8n)
+nesou `x-internal-timestamp` a `x-internal-signature` = HMAC-SHA256 nad `značka.tělo` sdíleným
+`INTERNAL_HMAC_SECRET` (aspoň 32 znaků). Značka starší 5 minut se odmítne. Bez tajemství trasa vrací 503.
+**Proč:** zadání 5.6. Podpis je jediná ochrana trasy, která vrací osobní data (adresy se nevracejí, ale
+výběr položek ano), a nepodepsaná odchozí zpráva by n8n nedokázala odlišit od cizí.
+**Cena:** dodržet přesné hodiny na obou stranách (5 minut tolerance). Ochrana proti opakování je jen
+časová, žádný seznam použitých značek. Odchozí zpráva nese jen ID uživatele, tarif a stav, žádný e-mail.
+Pád n8n platbu neblokuje: odeslání má časový limit 5 s a chyba se jen zaloguje.

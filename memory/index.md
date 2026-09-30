@@ -3,7 +3,7 @@
 Čti to jako první v každé relaci, před jakoukoli prací. Tento soubor sám nic neobsahuje, jen říká, kde co najdeš a v jakém stavu projekt je.
 
 ## 1. Stav projektu (jedna věta)
-**Fáze:** Fáze 3 schválená a commitnutá. Probíhá fáze 4, platby (Stripe). Chybí skutečný Neon, Resend a Stripe sandbox.
+**Fáze:** Fáze 3 schválená a commitnutá, od 2026-09-30 zapojená skutečná databáze Neon. Kód fáze 4 (platby) je hotový a nevyzkoušený: chybí sandbox Stripe s klíči, pak přijde zastávka (krok 21). Z fáze 5 je hotový jen krok 22 (podepsané interní trasy pro n8n), zbytek čeká na rozhodnutí uživatele. Chybí i Resend.
 Podrobnosti vždy v `memory.md`, sekce Aktuální stav.
 
 ## 2. Systémové soubory
@@ -22,7 +22,7 @@ Podrobnosti vždy v `memory.md`, sekce Aktuální stav.
 Živé zadání uživatele, `CLAUDE.md`, `memory/pravidla.md`, `memory/memory.md`, `AGENTS.md`. Rozpor se nikdy neřeší potichu, vždy se pojmenuje.
 
 ## 4. Mapa projektu
-Cílová struktura je v `AGENTS.md`, sekce Struktura repozitáře. Dnes existuje: `src/app/` (stránka, tři právní stránky, `api/subscribe`), `src/proxy.ts`, `src/components/` (+ `sections/`, `ui/`), `src/lib/`, `src/data/`, `scripts/gen-icons.mjs`, `.claude/security/`, `.github/workflows/`, `public/`, konfigurace v kořeni. Od fáze 3 také `src/db/`, `src/emails/`, `drizzle/`, `docker-compose.yml`, `scripts/seed.mts`.
+Cílová struktura je v `AGENTS.md`, sekce Struktura repozitáře. Dnes existuje: `src/app/` (stránka, tři právní stránky, `api/subscribe`), `src/proxy.ts`, `src/components/` (+ `sections/`, `ui/`), `src/lib/`, `src/data/`, `scripts/gen-icons.mjs`, `.claude/security/`, `.github/workflows/`, `public/`, konfigurace v kořeni. Od fáze 3 také `src/db/`, `src/emails/`, `drizzle/`, `docker-compose.yml`, `scripts/seed.mts`. Od fáze 4 `src/lib/billing.ts`, `src/lib/stripe.ts`, `src/app/api/webhooks/stripe/`, `src/app/ucet/TierCard.tsx`, `scripts/stripe-setup.mts`. Od fáze 5 `src/lib/internal-auth.ts`, `src/lib/n8n-events.ts`, `src/lib/reports.ts`, `src/emails/ReportEmail.tsx`, `src/app/api/internal/render-report/`.
 
 ## 5. Rychlý start relace
 1. Přečti `CLAUDE.md`, `memory/index.md`, `memory/pravidla.md`, `memory/memory.md`, `AGENTS.md`.

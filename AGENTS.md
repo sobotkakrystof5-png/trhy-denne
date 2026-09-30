@@ -20,9 +20,9 @@ Blok `nextjs-agent-rules` nahoře pochází z `create-next-app` a `next dev` ho 
 - **Typ:** placený newsletter o amerických akciích a indexech s vlastním výběrem položek. Prodejní stránka, registrace, účet, předplatné
 - **Stav:** viz `memory/memory.md`, sekce Aktuální stav
 - **Jazyk webu a kódu komentářů:** čeština. Identifikátory v kódu anglicky
-- **Stack:** Next.js (App Router) 16.3.7 (Turbopack), React 19.2.8, TypeScript, Tailwind CSS v4, Motion, Drizzle ORM 0.45 (+ `drizzle-kit`, `pg` jen pro migrace a seed), `@neondatabase/serverless`, Zod 4, Better Auth 1.7 (magic link), Resend a React Email, Stripe (fáze 4), PostHog (`posthog-js`, fáze 5), `simple-icons`, písma `@fontsource-variable/space-grotesk` (nadpisy, popisky, tlačítka, čísla) a `@fontsource-variable/montserrat` (text), potvrzené uživatelem. Motion je nainstalovaný, ale nepoužitý (viz Klíčové technické fakty)
+- **Stack:** Next.js (App Router) 16.3.7 (Turbopack), React 19.2.8, TypeScript, Tailwind CSS v4, Motion, Drizzle ORM 0.45 (+ `drizzle-kit`, `pg` jen pro migrace a seed), `@neondatabase/serverless`, Zod 4, Better Auth 1.7 (magic link), Resend a React Email, `stripe` 22.6.2 (verze API `2026-08-26.dahlia` zabudovaná v SDK, neurčuje se v kódu), PostHog (`posthog-js`, fáze 5), `simple-icons`, písma `@fontsource-variable/space-grotesk` (nadpisy, popisky, tlačítka, čísla) a `@fontsource-variable/montserrat` (text), potvrzené uživatelem. Motion je nainstalovaný, ale nepoužitý (viz Klíčové technické fakty)
 - **Hosting:** Vercel. **Databáze:** Neon Postgres. **Automatizace:** n8n (mimo tento repozitář)
-- **Příkazy:** `npm run dev`, `npm run build`, `npm run lint`, `node scripts/gen-icons.mjs` (znovu vygeneruje ikony), `npm run db:up` (lokální Postgres a proxy Neonu v Dockeru), `npm run db:generate` a `npm run db:migrate` (migrace přes drizzle-kit), `npm run db:seed` (katalog a vitrína z ukázkových dat)
+- **Příkazy:** `npm run dev`, `npm run build`, `npm run lint`, `node scripts/gen-icons.mjs` (znovu vygeneruje ikony), `npm run db:up` (lokální Postgres a proxy Neonu v Dockeru), `npm run db:generate` a `npm run db:migrate` (migrace přes drizzle-kit), `npm run db:seed` (katalog a vitrína z ukázkových dat), `npm run stripe:setup` (produkty, ceny a nastavení portálu v sandboxu, opakovatelné)
 
 ## Struktura repozitáře (cílový stav)
 
@@ -44,10 +44,12 @@ Blok `nextjs-agent-rules` nahoře pochází z `create-next-app` a `next dev` ho 
 ├── drizzle.config.ts
 ├── drizzle/                     migrace (0000 pg_trgm, 0001 schéma, 0002 plan_limits)
 ├── scripts/seed.mts             seed katalogu a vitríny (node, bez sestavení)
+├── scripts/stripe-setup.mts     produkty, ceny a nastavení portálu v sandboxu Stripe
 └── src/
     ├── proxy.ts                 CSP s nonce (v Next.js 16 místo middleware.ts)
     ├── app/                     trasy: /, /prihlaseni (+ /overit), /ucet, /potvrzeni, /dekujeme,
     │                            /podminky, /ochrana-udaju, /disclaimer, /api/*
+    │                            (včetně /api/webhooks/stripe), /ucet/TierCard.tsx
     ├── components/              Header, TickerTape, ScrollProgress, BrandMark (značka webu), SymbolIcon (loga položek),
     │                            Sparkline, CountUp, WatchlistPicker, AnalysisList, SignupForm, TimeCalculator, Footer, LegalPage
     │   ├── sections/            sekce prodejní stránky: Hero, HeroBoard, Problem, HowItWorks, Dashboard, Analyses,
@@ -55,10 +57,12 @@ Blok `nextjs-agent-rules` nahoře pochází z `create-next-app` a `next dev` ho 
     │   └── ui/                  Button, Card, ChangeChip, Badge, Segmented, SectionDivider
     ├── data/                    sample.ts (ukázková data do zapojení API), icons.generated.ts
     ├── db/                      schema.ts (Drizzle), index.ts (HTTP klient a withTransaction přes Pool)
-    ├── emails/                  šablony React Email (Layout, templates)
+    ├── emails/                  šablony React Email (Layout, templates, ReportEmail)
     └── lib/                     site.ts, format.ts, plans.ts (tarify, checkAdd), signup.ts, symbols.ts, env.ts,
                                  auth.ts (Better Auth), email.tsx (Resend), subscriptions.ts, watchlist.ts,
-                                 rate-limit.ts, http.ts, později podpisy HMAC a Stripe
+                                 rate-limit.ts, http.ts, stripe.ts (klient a mapa cen), billing.ts
+                                 (Checkout, portál, sync předplatného), internal-auth.ts (podpisy HMAC),
+                                 n8n-events.ts (odchozí události), reports.ts a report-email.tsx (report)
 ```
 
 ## Klíčové technické fakty
@@ -74,8 +78,12 @@ Blok `nextjs-agent-rules` nahoře pochází z `create-next-app` a `next dev` ho 
 - **Jednorázové odkazy z e-mailu** (potvrzení odběru, přihlášení) vedou na stránku s tlačítkem, token se spotřebuje až formulářem. Skenery pošty tak nic nepotvrdí ani nespotřebují.
 - **Omezení počtu požadavků:** `hit(limits.x, subjekt)` v `src/lib/rate-limit.ts` nad tabulkou `rate_limits`. Klíč je hash. IP bere z `x-forwarded-for` (Vercel).
 - **Limity tarifů** jsou v tabulce `plan_limits`, ne v kódu. UI a server čtou tentýž zdroj.
-- **Platby:** webhook Stripe přijímá `POST /api/webhooks/stripe` (surové tělo, ověření podpisu, idempotence přes `stripe_events`). Tarif se mapuje z ID ceny na serveru.
-- **n8n:** propojení podepsanými voláními (HMAC-SHA256, časová značka, platnost 5 minut). Render reportů dělá Next.js (`/api/internal/render-report`), n8n jen orchestruje. n8n používá vlastního databázového uživatele s minimálními právy.
+- **Platby:** webhook Stripe přijímá `POST /api/webhooks/stripe` (surové tělo, `constructEventAsync`, idempotence přes `stripe_events`). Tarif se mapuje z ID ceny na serveru (`tierForPrice` v `src/lib/stripe.ts`), nikdy z hodnoty od klienta. `paymentsReady()` v `src/lib/env.ts` vyžaduje účty, klíč, podpis webhooku a obě ceny, jinak platby pravdivě vrací 503 a texty netvrdí, že běží.
+- **Zdroj pravdy o tarifu je Stripe.** Každá událost webhooku si předplatné načte (`syncSubscription` v `src/lib/billing.ts`) a přepíše podle něj řádek uživatele, místo aby stav dopočítávala z těla zprávy. Na pořadí událostí proto nezáleží. Řádek v `stripe_events` se při chybě zpracování maže, aby Stripe mohl doručení zopakovat.
+- **Pozor na verzi API Stripe:** `Subscription.current_period_end` už neexistuje, období je na položce (`subscription.items.data[0].current_period_end`), a faktura nese předplatné v `invoice.parent.subscription_details.subscription`. Při upgradu SDK projít changelog.
+- **Souhlas s okamžitým poskytnutím digitálního obsahu** je povinné zaškrtávátko v kartě tarifu (`src/app/ucet/TierCard.tsx`), ne možnost Checkoutu. Čas a verze znění se ukládají do `users.digital_content_waiver_at` a `..._version` ještě před odchodem na platbu. Verze je `WAIVER_TEXT_VERSION` v `src/lib/stripe.ts`, při změně znění se zvedá.
+- **Platí se jen z `/ucet`,** ne z prodejní stránky. Ceník na `/` vybere tarif a pošle adresu, platit může jen přihlášený člověk s prokázanou adresou.
+- **n8n:** propojení podepsanými voláními (HMAC-SHA256 nad `značka.tělo`, hlavičky `x-internal-timestamp` a `x-internal-signature`, platnost 5 minut, tajemství `INTERNAL_HMAC_SECRET`), oběma směry. Render reportů dělá Next.js (`POST /api/internal/render-report`, dávka do 100 uživatelů, vrací HTML, do `outbox` ho ukládá n8n), n8n jen orchestruje. Po zpracování události Stripe jde do `N8N_EVENT_WEBHOOK_URL` podepsaná zpráva (`notifyN8n` v `src/lib/n8n-events.ts`), její chyba se jen loguje a platbu neblokuje. Render nepřeskočí kontrolu: bez `market_daily.report_ready` vrací 409, nepotvrzené, odhlášené a bez placeného přístupu (lhůta po `past_due`) uživatele vynechá a vrátí v `skipped`. n8n používá vlastního databázového uživatele s minimálními právy.
 - **Čísla** pocházejí jen z datového API. Jazykový model je nepíše. Položky bez výrazného pohybu dostanou šablonový text bez volání LLM.
 - **Veřejné demo dashboardu** ukazuje jen položky s čerstvými daty (vitrína a sjednocení výběrů). Pro ostatní vrací stav "data budou k dispozici po přidání do výběru".
 - **Ukázková data** jsou deterministická a viditelně označená, dokud není zapojené API.
@@ -104,7 +112,7 @@ Tato sekce je zdroj pravdy. `CLAUDE.md` drží jen krátký blok.
 
 1. **Hlavičky** se vždy nasazují společně: HSTS (`max-age=63072000; includeSubDomains`, bez `preload` do měsíce čistého provozu), CSP, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` (zakázat nepoužívané), COOP `same-origin`, CORP `same-origin`, `X-XSS-Protection: 0`. Odstranit `X-Powered-By`.
 2. **CSP** se staví v `src/proxy.ts` s nonce a `strict-dynamic`. `script-src` nikdy neobsahuje `unsafe-inline` ani `unsafe-eval` (ten jen ve vývoji). Vždy `base-uri`, `object-src 'none'`, `frame-ancestors`, `form-action`. Žádné zástupné znaky. `style-src` je **bez** `'unsafe-inline'`. Zadání s ním počítalo kvůli Motion, ale ukázalo se, že potřeba není (ověřeno 2026-09-29, viz `DECISIONS.md`). Cena: inline atribut `style` v HTML je zakázaný, hodnoty počítané za běhu se nastavují přes CSSOM (`element.style.setProperty`), což CSP neřeší. Přehodnotit se to smí, až Motion opravdu narazí.
-3. **Každá doména v CSP** má řádek v `.claude/security/CSP-LOG.md` (co ji potřebuje a proč). Očekávané: PostHog (EU) v `connect-src`. Stripe se používá jen přesměrováním na hostovanou stránku.
+3. **Každá doména v CSP** má řádek v `.claude/security/CSP-LOG.md` (co ji potřebuje a proč). Očekávané: PostHog (EU) v `connect-src`. Stripe se používá jen přesměrováním na hostovanou stránku, přesto je od fáze 4 ve `form-action` (`checkout.stripe.com`, `billing.stripe.com`): prohlížeč tuto direktivu hlídá i na přesměrování po odeslání formuláře, takže bez nich by platba bez JavaScriptu skončila zablokovaná. Do `script-src`, `frame-src` ani `connect-src` nepatří nic ze Stripe.
 4. **Zpřísnění se nikdy neobchází.** Když knihovna žádá `unsafe-inline` nebo `unsafe-eval`, přehodnoť knihovnu, ne politiku.
 5. **Tajemství:** jen na serveru. Do prohlížeče jen `NEXT_PUBLIC_*`. `.gitignore` obsahuje `.env`, `.env.*`, `*.pem`, `*.key`, `.vercel`, `.DS_Store`.
 6. **Vstupy:** Zod na každé trase. Tokeny se ukládají jako hash. Omezení počtu požadavků na přihlášení, odběr a vyhledávání.

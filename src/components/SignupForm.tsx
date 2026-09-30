@@ -31,7 +31,14 @@ const tierOptions: { value: SignupTier; label: string }[] = [
  * Formulář odběru. Hero má jen e-mail a souhlas, závěrečná výzva navíc
  * přepínač tarifu. Bez JavaScriptu se odešle klasicky na tutéž trasu.
  */
-export function SignupForm({ withTier = false }: { withTier?: boolean }) {
+export function SignupForm({
+  withTier = false,
+  paymentsLive = false,
+}: {
+  withTier?: boolean;
+  /** Běží platby? Mění jen to, co formulář slibuje u placených tarifů. */
+  paymentsLive?: boolean;
+}) {
   const id = useId();
   const emailRef = useRef<HTMLInputElement>(null);
   const consentRef = useRef<HTMLInputElement>(null);
@@ -172,7 +179,9 @@ export function SignupForm({ withTier = false }: { withTier?: boolean }) {
           <p className="mt-3 text-[0.9375rem] leading-normal text-text">
             {tier === "free"
               ? "Každou neděli tři největší pohyby týdne. Zdarma a bez platební karty."
-              : `Platby zatím nespouštíme. Zapíšeme vás na Free a poznamenáme si zájem o ${plans[tier].name}. Až tarif spustíme, napíšeme vám.`}
+              : paymentsLive
+                ? `Nejdřív vám pošleme potvrzovací e-mail. Tarif ${plans[tier].name} pak zaplatíte ve svém účtu.`
+                : `Platby zatím nespouštíme. Zapíšeme vás na Free a poznamenáme si zájem o ${plans[tier].name}. Až tarif spustíme, napíšeme vám.`}
           </p>
         </div>
       ) : null}

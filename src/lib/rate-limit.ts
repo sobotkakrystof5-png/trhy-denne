@@ -21,6 +21,8 @@ export const limits = {
   confirmIp: { scope: "confirm:ip", max: 20, windowSeconds: 10 * 60 },
   searchIp: { scope: "search:ip", max: 60, windowSeconds: 60 },
   watchlistUser: { scope: "watchlist:user", max: 60, windowSeconds: 60 },
+  /** Každé kliknutí na platbu zakládá zákazníka a sezení ve Stripe. */
+  billingUser: { scope: "billing:user", max: 10, windowSeconds: 10 * 60 },
 } satisfies Record<string, Limit>;
 
 export type LimitResult = { ok: boolean; retryAfter: number };

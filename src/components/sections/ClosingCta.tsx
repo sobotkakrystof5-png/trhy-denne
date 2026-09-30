@@ -1,4 +1,5 @@
 import { SignupForm } from "../SignupForm";
+import { paymentsReady } from "@/lib/env";
 
 /** Závěrečná výzva: plný lososový pruh bez mřížky, uprostřed karta. */
 export function ClosingCta() {
@@ -17,7 +18,7 @@ export function ClosingCta() {
             Zvolte tarif a zadejte adresu, na kterou má přehled chodit.
           </p>
           <div className="mt-8">
-            <SignupForm withTier />
+            <SignupForm withTier paymentsLive={paymentsReady()} />
           </div>
         </div>
       </div>
